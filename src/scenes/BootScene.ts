@@ -83,7 +83,11 @@ export class BootScene extends Phaser.Scene {
     this.load.image('title_bg', 'assets/title_bg.png');
     this.load.image('logo', 'assets/logo.png');
 
-    // Carrega spritesheet placeholder para o personagem (futuro)
-    // this.load.spritesheet('player', 'assets/player.png', { frameWidth: 32, frameHeight: 32 });
+    // Carrega o spritesheet do player (8 frames de 32×32)
+    // Ordem: idle1, idle2, run1, run2, jump, fall, shoot, dash
+    this.load.spritesheet('player_sheet', 'assets/player_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
   }
 }
