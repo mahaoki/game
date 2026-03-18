@@ -9,6 +9,7 @@
  *   - Ler input do InputManager e traduzir em eventos XState
  *   - Tocar animações conforme o estado
  *   - Gerenciar tiro (criar Bullets)
+ *   - Gerenciar dano (knockback, i-frames, morte)
  *
  * 🎮 Spritesheet: player_sheet.png (8 frames de 32×32)
  *    Frame 0-1: Idle (breathing)
@@ -37,9 +38,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Timers */
   private dashTimer: Phaser.Time.TimerEvent | null = null;
   private shootCooldownTimer: Phaser.Time.TimerEvent | null = null;
+  private hurtTimer: Phaser.Time.TimerEvent | null = null;
+  private invulnerabilityTimer: Phaser.Time.TimerEvent | null = null;
 
   /** Estado local para dash direction */
   private dashDirection: number = 1;
+
+  /** Timer para o efeito de piscar (i-frames) */
+  private blinkTween: Phaser.Tweens.Tween | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -89,16 +95,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /**
    * Cria as animações usando frames do spritesheet real.
-   *
-   * Spritesheet layout (player_sheet.png, 256×32):
-   *   Frame 0: Idle 1 (standing)
-   *   Frame 1: Idle 2 (breathing)
-   *   Frame 2: Run 1 (stride left)
-   *   Frame 3: Run 2 (stride right)
-   *   Frame 4: Jump (ascending)
-   *   Frame 5: Fall (descending)
-   *   Frame 6: Shoot (arm extended)
-   *   Frame 7: Dash (leaning forward)
    */
   private createAnimations(): void {
     // Idle: alterna entre frame 0 e 1
@@ -172,6 +168,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         repeat: 0,
       });
     }
+
+    // Hurt: pisca entre frame 0 e nenhum (usa idle frame + tint)
+    if (!this.scene.anims.exists('player_hurt')) {
+      this.scene.anims.create({
+        key: 'player_hurt',
+        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
+          frames: [5], // Usa frame de fall como "hit"
+        }),
+        frameRate: 1,
+        repeat: 0,
+      });
+    }
   }
 
   /**
@@ -183,6 +191,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const context = this.playerActor.getSnapshot().context;
     const body = this.body as Phaser.Physics.Arcade.Body;
     const onFloor = body.blocked.down || body.touching.down;
+
+    // ─── Bloquear input durante hurt/dead ─────────────────────
+    if (state === 'hurt' || state === 'dead') {
+      this.updateAnimation(state as string);
+      return;
+    }
 
     // ─── Movimentação horizontal ──────────────────────────────
     if (state !== 'dashing') {
@@ -304,11 +318,144 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     );
   }
 
+  /**
+   * Recebe dano — aplica knockback, inicia i-frames, e envia evento à máquina.
+   * Chamado externamente (colisão com inimigo, etc.)
+   */
+  takeDamage(amount: number): void {
+    const context = this.playerActor.getSnapshot().context;
+
+    // Não toma dano se invulnerável ou durante dash
+    if (context.isInvulnerable) return;
+    const state = this.playerActor.getSnapshot().value;
+    if (state === 'dashing' || state === 'dead') return;
+
+    // Envia evento à máquina (transiciona para hurt)
+    this.playerActor.send({ type: 'TAKE_DAMAGE', damage: amount });
+
+    // Knockback (empurra para trás)
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const knockDir = context.facing === 'right' ? -1 : 1;
+    body.setVelocityX(knockDir * this.config.knockbackForceX);
+    body.setVelocityY(this.config.knockbackForceY);
+
+    // Verifica se morreu (imediato — a máquina faz always: dead se health=0)
+    const newState = this.playerActor.getSnapshot().value;
+
+    if (newState === 'dead') {
+      this.handleDeath();
+      return;
+    }
+
+    // Flash vermelho
+    this.setTint(0xff0000);
+
+    // Timer do estado hurt → volta ao idle
+    this.hurtTimer?.destroy();
+    this.hurtTimer = this.scene.time.delayedCall(this.config.hurtDurationMs, () => {
+      this.clearTint();
+      this.playerActor.send({ type: 'HURT_END' });
+    });
+
+    // I-frames (invulnerabilidade com efeito de piscar)
+    this.startInvulnerabilityBlink();
+
+    // Timer de invulnerabilidade
+    this.invulnerabilityTimer?.destroy();
+    this.invulnerabilityTimer = this.scene.time.delayedCall(
+      this.config.invulnerabilityMs,
+      () => {
+        this.playerActor.send({ type: 'INVULNERABILITY_END' });
+        this.stopInvulnerabilityBlink();
+      }
+    );
+  }
+
+  /**
+   * Morte por cair no buraco — perde 1 vida inteira, respawn.
+   */
+  pitDeath(): void {
+    const state = this.playerActor.getSnapshot().value;
+    if (state === 'dead') return;
+
+    this.playerActor.send({ type: 'PIT_DEATH' });
+    this.handleDeath();
+  }
+
+  /** Lida com a morte (emite evento para GameScene) */
+  private handleDeath(): void {
+    // Para todos os timers
+    this.dashTimer?.destroy();
+    this.shootCooldownTimer?.destroy();
+    this.hurtTimer?.destroy();
+
+    // Emite evento para a scene
+    this.scene.events.emit('player-died', this.getLives());
+  }
+
+  /**
+   * Respawn — reseta posição, reinicia máquina se tem vidas.
+   * Retorna true se respawnou, false se game over.
+   */
+  respawn(x: number, y: number): boolean {
+    const context = this.playerActor.getSnapshot().context;
+    if (context.lives <= 0) return false;
+
+    this.playerActor.send({ type: 'RESPAWN' });
+    this.setPosition(x, y);
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    body.setVelocity(0, 0);
+
+    // I-frames de respawn
+    this.startInvulnerabilityBlink();
+    this.invulnerabilityTimer?.destroy();
+    this.invulnerabilityTimer = this.scene.time.delayedCall(
+      this.config.invulnerabilityMs,
+      () => {
+        this.playerActor.send({ type: 'INVULNERABILITY_END' });
+        this.stopInvulnerabilityBlink();
+      }
+    );
+
+    return true;
+  }
+
+  /** Inicia efeito de piscar (i-frames) */
+  private startInvulnerabilityBlink(): void {
+    this.stopInvulnerabilityBlink();
+    this.blinkTween = this.scene.tweens.add({
+      targets: this,
+      alpha: { from: 1, to: 0.2 },
+      duration: 80,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /** Para o efeito de piscar */
+  private stopInvulnerabilityBlink(): void {
+    if (this.blinkTween) {
+      this.blinkTween.stop();
+      this.blinkTween = null;
+    }
+    this.setAlpha(1);
+  }
+
   /** Atualiza a animação baseada no estado atual */
   private updateAnimation(state: string): void {
     const context = this.playerActor.getSnapshot().context;
 
+    // Flip baseado na direção
+    this.setFlipX(context.facing === 'left');
+
     switch (state) {
+      case 'hurt':
+        this.play('player_hurt', true);
+        break;
+      case 'dead':
+        this.play('player_hurt', true);
+        this.setTint(0xff0000);
+        break;
       case 'dashing':
         this.play('player_dash', true);
         break;
@@ -346,15 +493,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.playerActor.getSnapshot().context.maxHealth;
   }
 
-  /** Recebe dano */
-  takeDamage(amount: number): void {
-    this.playerActor.send({ type: 'TAKE_DAMAGE', damage: amount });
-
-    // Flash de dano (pisca vermelho)
-    this.setTint(0xff0000);
-    this.scene.time.delayedCall(100, () => {
-      this.clearTint();
-    });
+  /** Retorna as vidas restantes */
+  getLives(): number {
+    return this.playerActor.getSnapshot().context.lives;
   }
 
   /** Limpa ao destruir */
@@ -362,6 +503,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.playerActor.stop();
     this.dashTimer?.destroy();
     this.shootCooldownTimer?.destroy();
+    this.hurtTimer?.destroy();
+    this.invulnerabilityTimer?.destroy();
+    this.stopInvulnerabilityBlink();
     super.destroy(fromScene);
   }
 }

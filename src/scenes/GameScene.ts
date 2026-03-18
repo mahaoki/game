@@ -5,8 +5,9 @@
  *   - Player controlável (andar, pular, dash, tiro)
  *   - Plataformas com colisão
  *   - Câmera que segue o Player
- *   - HUD (barra de vida)
+ *   - HUD (barra de vida + vidas)
  *   - Parallax background
+ *   - Sistema de dano e vidas
  *
  * 🎮 A gameplay acontece aqui!
  */
@@ -23,6 +24,8 @@ export class GameScene extends Phaser.Scene {
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private bulletGroup!: Phaser.Physics.Arcade.Group;
   private levelConfig!: LevelConfig;
+  private livesText!: Phaser.GameObjects.Text;
+  private isRespawning: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -44,9 +47,8 @@ export class GameScene extends Phaser.Scene {
     // ─── Plataformas ──────────────────────────────────────────
     this.createPlatforms();
 
-    // ─── Bullet pool & texture ─────────────────────────────────
+    // ─── Bullet pool ──────────────────────────────────────────
     this.createBulletPool();
-    this.createBulletTexture();
 
     this.player = new Player(
       this,
@@ -72,12 +74,30 @@ export class GameScene extends Phaser.Scene {
       maxHealth: this.player.getMaxHealth(),
     });
 
+    // ─── Vidas HUD ────────────────────────────────────────────
+    this.livesText = this.add
+      .text(8, 90, '', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '5px',
+        color: '#00ccff',
+      })
+      .setScrollFactor(0)
+      .setDepth(900);
+    this.updateLivesDisplay();
+
+    // ─── Listener de morte ────────────────────────────────────
+    this.events.on('player-died', this.onPlayerDied, this);
+
     // ─── Stage info ───────────────────────────────────────────
     this.createStageInfo();
+
+    this.isRespawning = false;
   }
 
   /** Loop principal — chamado a cada frame (~60fps) */
   update(): void {
+    if (this.isRespawning) return;
+
     // Lê input e atualiza Player
     const input = this.inputManager.getInput();
     this.player.handleInput(input);
@@ -87,8 +107,53 @@ export class GameScene extends Phaser.Scene {
 
     // Verifica se Player caiu no buraco
     if (this.player.y > this.levelConfig.worldHeight + 20) {
-      this.handlePlayerDeath();
+      this.handlePitDeath();
     }
+  }
+
+  /** Player caiu no buraco — perde 1 vida */
+  private handlePitDeath(): void {
+    if (this.isRespawning) return;
+    this.isRespawning = true;
+
+    // Notifica o player (decrementa vida na state machine)
+    this.player.pitDeath();
+  }
+
+  /** Callback quando o player morre (por dano ou buraco) */
+  private onPlayerDied(remainingLives: number): void {
+    this.updateLivesDisplay();
+
+    if (remainingLives <= 0) {
+      // Game Over
+      this.cameras.main.fadeOut(1000, 0, 0, 0);
+      this.time.delayedCall(1200, () => {
+        this.scene.start('GameOverScene');
+      });
+      return;
+    }
+
+    // Respawn com fade
+    this.cameras.main.fadeOut(300, 0, 0, 0);
+    this.time.delayedCall(500, () => {
+      const respawned = this.player.respawn(
+        this.levelConfig.spawnPoint.x,
+        this.levelConfig.spawnPoint.y
+      );
+
+      if (respawned) {
+        this.cameras.main.fadeIn(300, 0, 0, 0);
+        this.isRespawning = false;
+        this.updateLivesDisplay();
+      }
+    });
+  }
+
+  /** Atualiza o display de vidas no HUD */
+  private updateLivesDisplay(): void {
+    const lives = this.player.getLives();
+    // Ícone × número de vidas
+    this.livesText.setText(`♥ × ${lives}`);
   }
 
   /** Cria o fundo com parallax */
@@ -109,7 +174,7 @@ export class GameScene extends Phaser.Scene {
       bg.fillStyle(color, 1);
       bg.fillRect(0, i * bandHeight, worldWidth, bandHeight);
     }
-    bg.setScrollFactor(0.1); // Parallax lento
+    bg.setScrollFactor(0.1);
 
     // Camada 2: estrelas
     const stars = this.add.graphics();
@@ -121,19 +186,17 @@ export class GameScene extends Phaser.Scene {
       stars.fillStyle(starColor, Phaser.Math.FloatBetween(0.2, 0.8));
       stars.fillRect(sx, sy, 1, 1);
     }
-    stars.setScrollFactor(0.2); // Parallax médio
+    stars.setScrollFactor(0.2);
 
     // Camada 3: prédios no fundo (silhuetas)
     const buildings = this.add.graphics();
     buildings.fillStyle(0x0a1220, 1);
 
-    // Silhuetas de prédios aleatórios
     for (let bx = 0; bx < worldWidth; bx += Phaser.Math.Between(20, 40)) {
       const bw = Phaser.Math.Between(15, 30);
       const bh = Phaser.Math.Between(20, 60);
       buildings.fillRect(bx, worldHeight - bh, bw, bh);
 
-      // Janelas
       buildings.fillStyle(0x223344, 0.3);
       for (let wy = worldHeight - bh + 4; wy < worldHeight - 4; wy += 6) {
         for (let wx = bx + 3; wx < bx + bw - 3; wx += 5) {
@@ -142,7 +205,7 @@ export class GameScene extends Phaser.Scene {
       }
       buildings.fillStyle(0x0a1220, 1);
     }
-    buildings.setScrollFactor(0.4); // Parallax rápido
+    buildings.setScrollFactor(0.4);
   }
 
   /** Cria as plataformas do nível */
@@ -150,21 +213,18 @@ export class GameScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
 
     for (const platConfig of this.levelConfig.platforms) {
-      // Caixa visual (retângulo colorido)
       const plat = this.add.rectangle(
         platConfig.x,
         platConfig.y,
         platConfig.width,
         platConfig.height,
-        platConfig.height > 12 ? 0x334466 : 0x3a5577 // Cor diferente para chão vs plataforma
+        platConfig.height > 12 ? 0x334466 : 0x3a5577
       );
       plat.setStrokeStyle(1, 0x556688);
 
-      // Corpo físico estático
       this.physics.add.existing(plat, true);
       this.platforms.add(plat);
 
-      // Detalhes visuais no topo da plataforma
       const topLine = this.add.rectangle(
         platConfig.x,
         platConfig.y - platConfig.height / 2,
@@ -172,7 +232,7 @@ export class GameScene extends Phaser.Scene {
         1,
         0x5588aa
       );
-      void topLine; // Visual only
+      void topLine;
     }
   }
 
@@ -183,22 +243,6 @@ export class GameScene extends Phaser.Scene {
       allowGravity: false,
       collideWorldBounds: false,
     });
-  }
-
-  /** Cria textura procedural para as balas */
-  private createBulletTexture(): void {
-    if (this.textures.exists('bullet_sprite')) return;
-
-    const g = this.make.graphics({ x: 0, y: 0 });
-
-    // Projétil de energia (cyan com core branco)
-    g.fillStyle(0x00aaff, 1);
-    g.fillCircle(4, 4, 3);
-    g.fillStyle(0xffffff, 1);
-    g.fillCircle(4, 4, 1);
-
-    g.generateTexture('bullet_sprite', 8, 8);
-    g.destroy();
   }
 
   /** Info do stage no início */
@@ -217,7 +261,6 @@ export class GameScene extends Phaser.Scene {
       .setDepth(800)
       .setAlpha(0);
 
-    // Animação: aparece e desaparece
     this.tweens.add({
       targets: stageText,
       alpha: 1,
@@ -228,23 +271,9 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  /** Player morreu (caiu no buraco) */
-  private handlePlayerDeath(): void {
-    // Respawn no ponto inicial
-    this.player.setPosition(
-      this.levelConfig.spawnPoint.x,
-      this.levelConfig.spawnPoint.y
-    );
-    const body = this.player.body as Phaser.Physics.Arcade.Body;
-    body.setVelocity(0, 0);
-    this.player.takeDamage(2);
-
-    // Flash da câmera
-    this.cameras.main.flash(200, 255, 0, 0);
-  }
-
   /** Limpa ao sair */
   shutdown(): void {
+    this.events.off('player-died', this.onPlayerDied, this);
     this.healthBar?.destroy();
   }
 }

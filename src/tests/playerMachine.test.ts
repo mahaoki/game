@@ -196,28 +196,137 @@ describe('playerMachine', () => {
     actor.stop();
   });
 
-  // ─── Dano e Cura ────────────────────────────────────────────
+  // ─── Dano → Hurt ────────────────────────────────────────────
 
-  it('deve reduzir health ao tomar dano', () => {
+  it('deve transicionar para hurt ao tomar dano', () => {
     const actor = createActor(playerMachine);
     actor.start();
     actor.send({ type: 'TAKE_DAMAGE', damage: 3 });
+    expect(getState(actor)).toBe('hurt');
     expect(getContext(actor).health).toBe(13);
+    expect(getContext(actor).isInvulnerable).toBe(true);
     actor.stop();
   });
 
-  it('health não deve ficar abaixo de 0', () => {
+  it('não deve tomar dano durante invulnerabilidade', () => {
     const actor = createActor(playerMachine);
     actor.start();
-    actor.send({ type: 'TAKE_DAMAGE', damage: 100 });
+    actor.send({ type: 'TAKE_DAMAGE', damage: 3 });
+    expect(getState(actor)).toBe('hurt');
+    actor.send({ type: 'HURT_END' });
+    // Ainda invulnerável (i-frames)
+    actor.send({ type: 'TAKE_DAMAGE', damage: 5 });
+    expect(getState(actor)).toBe('idle'); // Não transitou para hurt de novo
+    expect(getContext(actor).health).toBe(13); // Dano não aplicado
+    actor.stop();
+  });
+
+  it('deve voltar para idle após HURT_END', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'TAKE_DAMAGE', damage: 2 });
+    expect(getState(actor)).toBe('hurt');
+    actor.send({ type: 'HURT_END' });
+    expect(getState(actor)).toBe('idle');
+    actor.stop();
+  });
+
+  it('deve desligar invulnerabilidade após INVULNERABILITY_END', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'TAKE_DAMAGE', damage: 2 });
+    actor.send({ type: 'HURT_END' });
+    actor.send({ type: 'INVULNERABILITY_END' });
+    expect(getContext(actor).isInvulnerable).toBe(false);
+    // Agora pode tomar dano novamente
+    actor.send({ type: 'TAKE_DAMAGE', damage: 3 });
+    expect(getState(actor)).toBe('hurt');
+    expect(getContext(actor).health).toBe(11);
+    actor.stop();
+  });
+
+  // ─── Morte (Dead) ──────────────────────────────────────────
+
+  it('deve transicionar para dead quando health chega a 0', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'TAKE_DAMAGE', damage: 16 });
+    expect(getState(actor)).toBe('dead');
     expect(getContext(actor).health).toBe(0);
     actor.stop();
   });
+
+  it('deve perder 1 vida ao morrer', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    expect(getContext(actor).lives).toBe(3);
+    actor.send({ type: 'TAKE_DAMAGE', damage: 16 });
+    expect(getState(actor)).toBe('dead');
+    expect(getContext(actor).lives).toBe(2);
+    actor.stop();
+  });
+
+  // ─── Pit Death ─────────────────────────────────────────────
+
+  it('deve transicionar para dead ao cair no buraco', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'PIT_DEATH' });
+    expect(getState(actor)).toBe('dead');
+    expect(getContext(actor).lives).toBe(2);
+    actor.stop();
+  });
+
+  it('deve permitir pit death de qualquer estado', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'JUMP' });
+    actor.send({ type: 'FALL' });
+    actor.send({ type: 'PIT_DEATH' });
+    expect(getState(actor)).toBe('dead');
+    actor.stop();
+  });
+
+  // ─── Respawn ───────────────────────────────────────────────
+
+  it('deve fazer respawn se tem vidas restantes', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    actor.send({ type: 'PIT_DEATH' }); // lives: 3 → 2
+    expect(getState(actor)).toBe('dead');
+    actor.send({ type: 'RESPAWN' });
+    expect(getState(actor)).toBe('idle');
+    expect(getContext(actor).health).toBe(16); // Full HP
+    expect(getContext(actor).isInvulnerable).toBe(true);
+    expect(getContext(actor).lives).toBe(2);
+    actor.stop();
+  });
+
+  it('não deve permitir respawn sem vidas', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+    // Morre 3 vezes
+    actor.send({ type: 'PIT_DEATH' }); // lives 3 → 2
+    actor.send({ type: 'RESPAWN' });
+    actor.send({ type: 'INVULNERABILITY_END' });
+    actor.send({ type: 'PIT_DEATH' }); // lives 2 → 1
+    actor.send({ type: 'RESPAWN' });
+    actor.send({ type: 'INVULNERABILITY_END' });
+    actor.send({ type: 'PIT_DEATH' }); // lives 1 → 0
+    expect(getContext(actor).lives).toBe(0);
+    actor.send({ type: 'RESPAWN' }); // Deve ser bloqueado
+    expect(getState(actor)).toBe('dead'); // Permanece dead
+    actor.stop();
+  });
+
+  // ─── Cura ────────────────────────────────────────────────
 
   it('deve curar até o máximo', () => {
     const actor = createActor(playerMachine);
     actor.start();
     actor.send({ type: 'TAKE_DAMAGE', damage: 5 });
+    actor.send({ type: 'HURT_END' });
+    actor.send({ type: 'INVULNERABILITY_END' });
     actor.send({ type: 'HEAL', amount: 3 });
     expect(getContext(actor).health).toBe(14);
     actor.stop();
@@ -267,4 +376,36 @@ describe('playerMachine', () => {
 
     actor.stop();
   });
+
+  it('deve completar ciclo de vida: dano → hurt → idle → dano mortal → dead → respawn', () => {
+    const actor = createActor(playerMachine);
+    actor.start();
+
+    // Sofre dano
+    actor.send({ type: 'TAKE_DAMAGE', damage: 5 });
+    expect(getState(actor)).toBe('hurt');
+    expect(getContext(actor).health).toBe(11);
+
+    // Recupera do hurt
+    actor.send({ type: 'HURT_END' });
+    expect(getState(actor)).toBe('idle');
+
+    // Fim da invulnerabilidade
+    actor.send({ type: 'INVULNERABILITY_END' });
+    expect(getContext(actor).isInvulnerable).toBe(false);
+
+    // Dano mortal
+    actor.send({ type: 'TAKE_DAMAGE', damage: 11 });
+    expect(getState(actor)).toBe('dead');
+    expect(getContext(actor).health).toBe(0);
+    expect(getContext(actor).lives).toBe(2);
+
+    // Respawn
+    actor.send({ type: 'RESPAWN' });
+    expect(getState(actor)).toBe('idle');
+    expect(getContext(actor).health).toBe(16);
+
+    actor.stop();
+  });
 });
+

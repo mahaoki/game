@@ -10,6 +10,8 @@
  *   jumping  → Subindo (velocidade Y negativa)
  *   falling  → Descendo (velocidade Y positiva)
  *   dashing  → Dash rápido (invulnerável)
+ *   hurt     → Tomando dano (knockback + i-frames)
+ *   dead     → Morreu (health = 0, perde vida)
  *
  * O tiro (shooting) é tratado como um estado paralelo —
  * o player pode atirar enquanto anda, pula ou está parado.
@@ -31,6 +33,10 @@ export interface PlayerContext {
   health: number;
   /** Vida máxima */
   maxHealth: number;
+  /** Vidas restantes */
+  lives: number;
+  /** Se está invulnerável (i-frames) */
+  isInvulnerable: boolean;
   /** Se pode dar dash (cooldown) */
   canDash: boolean;
   /** Se pode atirar (cooldown) */
@@ -54,7 +60,11 @@ export type PlayerEvent =
   | { type: 'SHOOT_END' }
   | { type: 'SHOOT_COOLDOWN_RESET' }
   | { type: 'TAKE_DAMAGE'; damage: number }
-  | { type: 'HEAL'; amount: number };
+  | { type: 'HEAL'; amount: number }
+  | { type: 'HURT_END' }
+  | { type: 'INVULNERABILITY_END' }
+  | { type: 'RESPAWN' }
+  | { type: 'PIT_DEATH' };
 
 // ─── Contexto inicial ─────────────────────────────────────────────
 
@@ -62,6 +72,8 @@ const initialContext: PlayerContext = {
   facing: 'right',
   health: 16,
   maxHealth: 16,
+  lives: 3,
+  isInvulnerable: false,
   canDash: true,
   canShoot: true,
   isShooting: false,
@@ -85,10 +97,12 @@ const initialContext: PlayerContext = {
  *                            Idle
  *
  *   DASH (de qualquer terrestre) ──► Dashing ──► Idle
- * ```
  *
- * O tiro é tratado no contexto (isShooting) e pode acontecer
- * em qualquer estado — não é um estado exclusivo.
+ *   TAKE_DAMAGE ──► Hurt ──► Idle (com i-frames)
+ *                    └── se health=0 ──► Dead
+ *
+ *   PIT_DEATH ──► Dead (perde 1 vida inteira)
+ * ```
  */
 export const playerMachine = createMachine({
   id: 'player',
@@ -118,10 +132,9 @@ export const playerMachine = createMachine({
         canDash: true,
       }),
     },
-    TAKE_DAMAGE: {
+    INVULNERABILITY_END: {
       actions: assign({
-        health: ({ context, event }) =>
-          Math.max(0, context.health - (event as { type: 'TAKE_DAMAGE'; damage: number }).damage),
+        isInvulnerable: false,
       }),
     },
     HEAL: {
@@ -151,6 +164,16 @@ export const playerMachine = createMachine({
           target: 'dashing',
           guard: ({ context }) => context.canDash,
         },
+        TAKE_DAMAGE: {
+          target: 'hurt',
+          guard: ({ context }) => !context.isInvulnerable,
+          actions: assign({
+            health: ({ context, event }) =>
+              Math.max(0, context.health - (event as { type: 'TAKE_DAMAGE'; damage: number }).damage),
+            isInvulnerable: true,
+          }),
+        },
+        PIT_DEATH: { target: 'dead' },
       },
     },
 
@@ -170,6 +193,16 @@ export const playerMachine = createMachine({
           guard: ({ context }) => context.canDash,
         },
         FALL: { target: 'falling' },
+        TAKE_DAMAGE: {
+          target: 'hurt',
+          guard: ({ context }) => !context.isInvulnerable,
+          actions: assign({
+            health: ({ context, event }) =>
+              Math.max(0, context.health - (event as { type: 'TAKE_DAMAGE'; damage: number }).damage),
+            isInvulnerable: true,
+          }),
+        },
+        PIT_DEATH: { target: 'dead' },
       },
     },
 
@@ -184,6 +217,16 @@ export const playerMachine = createMachine({
         MOVE_RIGHT: {
           actions: assign({ facing: 'right' as FacingDirection }),
         },
+        TAKE_DAMAGE: {
+          target: 'hurt',
+          guard: ({ context }) => !context.isInvulnerable,
+          actions: assign({
+            health: ({ context, event }) =>
+              Math.max(0, context.health - (event as { type: 'TAKE_DAMAGE'; damage: number }).damage),
+            isInvulnerable: true,
+          }),
+        },
+        PIT_DEATH: { target: 'dead' },
       },
     },
 
@@ -197,6 +240,16 @@ export const playerMachine = createMachine({
         MOVE_RIGHT: {
           actions: assign({ facing: 'right' as FacingDirection }),
         },
+        TAKE_DAMAGE: {
+          target: 'hurt',
+          guard: ({ context }) => !context.isInvulnerable,
+          actions: assign({
+            health: ({ context, event }) =>
+              Math.max(0, context.health - (event as { type: 'TAKE_DAMAGE'; damage: number }).damage),
+            isInvulnerable: true,
+          }),
+        },
+        PIT_DEATH: { target: 'dead' },
       },
     },
 
@@ -206,6 +259,42 @@ export const playerMachine = createMachine({
         DASH_END: {
           target: 'idle',
           actions: assign({ canDash: false }),
+        },
+        PIT_DEATH: { target: 'dead' },
+      },
+    },
+
+    /** Tomando dano — knockback, sem controle */
+    hurt: {
+      always: [
+        {
+          target: 'dead',
+          guard: ({ context }) => context.health <= 0,
+        },
+      ],
+      on: {
+        HURT_END: {
+          target: 'idle',
+        },
+      },
+    },
+
+    /** Morreu — perde uma vida */
+    dead: {
+      entry: assign({
+        lives: ({ context }) => Math.max(0, context.lives - 1),
+      }),
+      on: {
+        RESPAWN: {
+          target: 'idle',
+          guard: ({ context }) => context.lives > 0,
+          actions: assign({
+            health: ({ context }) => context.maxHealth,
+            isInvulnerable: true,
+            canDash: true,
+            canShoot: true,
+            isShooting: false,
+          }),
         },
       },
     },

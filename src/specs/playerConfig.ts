@@ -44,6 +44,25 @@ export const PlayerConfigSchema = z.object({
   /** Máximo de projéteis na tela ao mesmo tempo */
   maxBullets: z.number().int().positive().default(3),
 
+  // ─── Dano & Vidas ───────────────────────────────────────────
+  /** Número de vidas iniciais */
+  lives: z.number().int().positive().default(3),
+
+  /** Duração do estado hurt em milissegundos (sem controle) */
+  hurtDurationMs: z.number().positive().default(500),
+
+  /** Duração da invulnerabilidade após dano (ms) */
+  invulnerabilityMs: z.number().positive().default(1500),
+
+  /** Knockback horizontal ao tomar dano (pixels/s) */
+  knockbackForceX: z.number().default(80),
+
+  /** Knockback vertical ao tomar dano (negativo = para cima) */
+  knockbackForceY: z.number().negative().default(-120),
+
+  /** Dano ao cair no buraco (= vida inteira por padrão) */
+  pitDamage: z.number().positive().default(16),
+
   // ─── Sprite ─────────────────────────────────────────────────
   /** Largura do sprite em pixels */
   spriteWidth: z.number().int().positive().default(32),

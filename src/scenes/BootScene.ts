@@ -89,5 +89,8 @@ export class BootScene extends Phaser.Scene {
       frameWidth: 32,
       frameHeight: 32,
     });
+
+    // Carrega o sprite do projétil (16×16 com transparência)
+    this.load.image('bullet_sprite', 'assets/bullet.png');
   }
 }
