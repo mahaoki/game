@@ -222,13 +222,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // ─── Detectar queda / pouso ───────────────────────────────
+    // Threshold de velocidade para evitar jitter em plataformas finas
     if (!onFloor && body.velocity.y > 0 && state === 'jumping') {
       this.playerActor.send({ type: 'FALL' });
     }
     if (onFloor && (state === 'jumping' || state === 'falling')) {
       this.playerActor.send({ type: 'LAND' });
     }
-    if (!onFloor && state !== 'jumping' && state !== 'falling' && state !== 'dashing') {
+    if (!onFloor && body.velocity.y > 10 && state !== 'jumping' && state !== 'falling' && state !== 'dashing') {
       this.playerActor.send({ type: 'FALL' });
     }
 
