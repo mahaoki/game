@@ -3,6 +3,7 @@
  *
  * Side-scroller estilo MegaMan X com:
  *   - Player controlável (andar, pular, dash, tiro)
+ *   - Inimigos (Patrol + Turret) com IA
  *   - Plataformas com colisão
  *   - Câmera que segue o Player
  *   - HUD (barra de vida + vidas)
@@ -13,9 +14,10 @@
  */
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
+import { Enemy } from '../entities/Enemy';
 import { InputManager } from '../core/InputManager';
 import { HealthBar } from '../ui/components/HealthBar';
-import { getLevel1Config, type LevelConfig } from '../specs/levelConfig';
+import { getLevel1Config, type LevelConfigWithEnemies } from '../specs/levelConfig';
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -23,7 +25,10 @@ export class GameScene extends Phaser.Scene {
   private healthBar!: HealthBar;
   private platforms!: Phaser.Physics.Arcade.StaticGroup;
   private bulletGroup!: Phaser.Physics.Arcade.Group;
-  private levelConfig!: LevelConfig;
+  private enemyGroup!: Phaser.Physics.Arcade.Group;
+  private enemyBulletGroup!: Phaser.Physics.Arcade.Group;
+  private enemies: Enemy[] = [];
+  private levelConfig!: LevelConfigWithEnemies;
   private livesText!: Phaser.GameObjects.Text;
   private isRespawning: boolean = false;
 
@@ -34,6 +39,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     // Carrega config do nível
     this.levelConfig = getLevel1Config();
+    this.enemies = [];
 
     // Fade-in ao entrar
     this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -55,9 +61,11 @@ export class GameScene extends Phaser.Scene {
     // ─── Plataformas ──────────────────────────────────────────
     this.createPlatforms();
 
-    // ─── Bullet pool ──────────────────────────────────────────
+    // ─── Bullet pools ─────────────────────────────────────────
     this.createBulletPool();
+    this.createEnemyBulletPool();
 
+    // ─── Player ───────────────────────────────────────────────
     this.player = new Player(
       this,
       this.levelConfig.spawnPoint.x,
@@ -65,8 +73,11 @@ export class GameScene extends Phaser.Scene {
       this.bulletGroup
     );
 
-    // Colisão Player ↔ Plataformas
-    this.physics.add.collider(this.player, this.platforms);
+    // ─── Inimigos ─────────────────────────────────────────────
+    this.createEnemies();
+
+    // ─── Colisões ─────────────────────────────────────────────
+    this.setupCollisions();
 
     // ─── Input ────────────────────────────────────────────────
     this.inputManager = new InputManager(this);
@@ -113,6 +124,13 @@ export class GameScene extends Phaser.Scene {
     // Atualiza HUD
     this.healthBar.update(this.player.getHealth());
 
+    // Atualiza IA dos inimigos
+    for (const enemy of this.enemies) {
+      if (enemy.active) {
+        enemy.updateEnemy();
+      }
+    }
+
     // Verifica se Player caiu no buraco
     if (this.player.y > this.levelConfig.worldHeight + 20) {
       this.handlePitDeath();
@@ -123,17 +141,14 @@ export class GameScene extends Phaser.Scene {
   private handlePitDeath(): void {
     if (this.isRespawning) return;
     this.isRespawning = true;
-
-    // Notifica o player (decrementa vida na state machine)
     this.player.pitDeath();
   }
 
-  /** Callback quando o player morre (por dano ou buraco) */
+  /** Callback quando o player morre */
   private onPlayerDied(remainingLives: number): void {
     this.updateLivesDisplay();
 
     if (remainingLives <= 0) {
-      // Game Over
       this.cameras.main.fadeOut(1000, 0, 0, 0);
       this.time.delayedCall(1200, () => {
         this.scene.start('GameOverScene');
@@ -160,15 +175,17 @@ export class GameScene extends Phaser.Scene {
   /** Atualiza o display de vidas no HUD */
   private updateLivesDisplay(): void {
     const lives = this.player.getLives();
-    // Ícone × número de vidas
     this.livesText.setText(`♥ × ${lives}`);
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Criação de elementos
+  // ═══════════════════════════════════════════════════════════════
 
   /** Cria o fundo com parallax */
   private createBackground(): void {
     const { worldWidth, worldHeight } = this.levelConfig;
 
-    // Camada 1: fundo escuro estático
     const bg = this.add.graphics();
     const steps = 18;
     const bandHeight = Math.ceil(worldHeight / steps);
@@ -184,7 +201,6 @@ export class GameScene extends Phaser.Scene {
     }
     bg.setScrollFactor(0.1);
 
-    // Camada 2: estrelas
     const stars = this.add.graphics();
     for (let i = 0; i < 40; i++) {
       const sx = Phaser.Math.Between(0, worldWidth);
@@ -196,15 +212,12 @@ export class GameScene extends Phaser.Scene {
     }
     stars.setScrollFactor(0.2);
 
-    // Camada 3: prédios no fundo (silhuetas)
     const buildings = this.add.graphics();
     buildings.fillStyle(0x0a1220, 1);
-
     for (let bx = 0; bx < worldWidth; bx += Phaser.Math.Between(20, 40)) {
       const bw = Phaser.Math.Between(15, 30);
       const bh = Phaser.Math.Between(20, 60);
       buildings.fillRect(bx, worldHeight - bh, bw, bh);
-
       buildings.fillStyle(0x223344, 0.3);
       for (let wy = worldHeight - bh + 4; wy < worldHeight - 4; wy += 6) {
         for (let wx = bx + 3; wx < bx + bw - 3; wx += 5) {
@@ -229,7 +242,6 @@ export class GameScene extends Phaser.Scene {
         platConfig.height > 12 ? 0x334466 : 0x3a5577
       );
       plat.setStrokeStyle(1, 0x556688);
-
       this.physics.add.existing(plat, true);
       this.platforms.add(plat);
 
@@ -244,13 +256,98 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  /** Cria o pool de balas */
+  /** Cria o pool de balas do player */
   private createBulletPool(): void {
     this.bulletGroup = this.physics.add.group({
       maxSize: 10,
       allowGravity: false,
       collideWorldBounds: false,
     });
+  }
+
+  /** Cria o pool de balas dos inimigos */
+  private createEnemyBulletPool(): void {
+    this.enemyBulletGroup = this.physics.add.group({
+      maxSize: 10,
+      allowGravity: false,
+      collideWorldBounds: false,
+    });
+  }
+
+  /** Cria os inimigos do nível */
+  private createEnemies(): void {
+    this.enemyGroup = this.physics.add.group();
+
+    for (const spawn of this.levelConfig.enemies) {
+      const enemy = new Enemy(
+        this,
+        spawn.x,
+        spawn.y,
+        spawn.type,
+        this.player,
+        this.enemyBulletGroup,
+        this.platforms
+      );
+      this.enemyGroup.add(enemy);
+      this.enemies.push(enemy);
+    }
+  }
+
+  /** Configura todas as colisões */
+  private setupCollisions(): void {
+    // Player ↔ Plataformas
+    this.physics.add.collider(this.player, this.platforms);
+
+    // Enemy ↔ Plataformas
+    this.physics.add.collider(this.enemyGroup, this.platforms);
+
+    // Player Bullet ↔ Enemy → enemy toma dano, bullet desativa
+    this.physics.add.overlap(
+      this.bulletGroup,
+      this.enemyGroup,
+      (bullet, enemy) => {
+        const b = bullet as Phaser.Physics.Arcade.Sprite;
+        const e = enemy as unknown as Enemy;
+        if (!b.active || !e.active) return;
+
+        // Desativa a bala
+        b.setActive(false);
+        b.setVisible(false);
+        (b.body as Phaser.Physics.Arcade.Body).setVelocity(0);
+
+        // Dano no inimigo (1 ponto por tiro)
+        e.takeDamage(1);
+      }
+    );
+
+    // Player ↔ Enemy (contato) → player toma dano
+    this.physics.add.overlap(
+      this.player,
+      this.enemyGroup,
+      (_player, enemy) => {
+        const e = enemy as unknown as Enemy;
+        if (!e.active || !e.isAlive()) return;
+        this.player.takeDamage(e.getContactDamage());
+      }
+    );
+
+    // Player ↔ Enemy Bullet → player toma dano
+    this.physics.add.overlap(
+      this.player,
+      this.enemyBulletGroup,
+      (_player, bullet) => {
+        const b = bullet as Phaser.Physics.Arcade.Sprite;
+        if (!b.active) return;
+
+        // Desativa o projétil
+        b.setActive(false);
+        b.setVisible(false);
+        (b.body as Phaser.Physics.Arcade.Body).setVelocity(0);
+
+        // Dano no player (3 pts por projétil de turret)
+        this.player.takeDamage(3);
+      }
+    );
   }
 
   /** Info do stage no início */

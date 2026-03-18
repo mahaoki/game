@@ -48,6 +48,22 @@ export const LevelConfigSchema = z.object({
 
 export type LevelConfig = z.infer<typeof LevelConfigSchema>;
 
+/** Schema de spawn de inimigo */
+const EnemySpawnSchema = z.object({
+  type: z.enum(['patrol', 'turret']),
+  x: z.number(),
+  y: z.number(),
+});
+
+export type EnemySpawn = z.infer<typeof EnemySpawnSchema>;
+
+/** Schema completo de um nível — com enemies */
+export const LevelConfigWithEnemiesSchema = LevelConfigSchema.extend({
+  enemies: z.array(EnemySpawnSchema).default([]),
+});
+
+export type LevelConfigWithEnemies = z.infer<typeof LevelConfigWithEnemiesSchema>;
+
 /**
  * Retorna a configuração do Level 1 — tutorial/intro stage.
  *
@@ -65,8 +81,8 @@ export type LevelConfig = z.infer<typeof LevelConfigSchema>;
  *  ████ = Plataformas
  * ```
  */
-export function getLevel1Config(): LevelConfig {
-  return LevelConfigSchema.parse({
+export function getLevel1Config(): LevelConfigWithEnemies {
+  return LevelConfigWithEnemiesSchema.parse({
     name: 'Intro Stage',
     worldWidth: 640,
     worldHeight: 180,
@@ -99,6 +115,15 @@ export function getLevel1Config(): LevelConfig {
 
       // Plataforma 6 (escada para cima)
       { x: 580, y: 80, width: 48, height: 8 },
+    ],
+
+    // ─── Inimigos ────────────────────────────────────────────
+    enemies: [
+      // 2x Patrol na seção central e direita do chão
+      { type: 'patrol', x: 320, y: 155 },
+      { type: 'patrol', x: 500, y: 155 },
+      // 1x Turret na plataforma 5 (direita alta)
+      { type: 'turret', x: 530, y: 88 },
     ],
   });
 }

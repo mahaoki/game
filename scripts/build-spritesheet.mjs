@@ -115,37 +115,33 @@ async function processFrame(inputPath, size) {
   };
 }
 
+
 /**
- * Monta o spritesheet do player
+ * Monta spritesheet genérico (N frames → horizontal strip)
  */
-async function buildPlayerSpritesheet() {
-  console.log('🎨 Montando spritesheet do player...');
+async function buildSpritesheet(name, frameNames, frameSize, outputName) {
+  console.log(`\n🎨 Montando spritesheet: ${name}...`);
 
-  const frameCount = PLAYER_FRAMES.length;
-  const sheetWidth = frameCount * FRAME_SIZE;
-  const sheetHeight = FRAME_SIZE;
-
-  // Processa cada frame
+  const sheetWidth = frameNames.length * frameSize;
+  const sheetHeight = frameSize;
   const processedFrames = [];
-  for (const frameName of PLAYER_FRAMES) {
+
+  for (const frameName of frameNames) {
     const filePath = await findFrameFile(frameName);
     console.log(`  📷 ${frameName} → ${path.basename(filePath)}`);
-    const frame = await processFrame(filePath, FRAME_SIZE);
+    const frame = await processFrame(filePath, frameSize);
     processedFrames.push(frame);
   }
 
-  // Cria o buffer do spritesheet (RGBA)
   const sheetBuffer = Buffer.alloc(sheetWidth * sheetHeight * 4, 0);
 
   for (let f = 0; f < processedFrames.length; f++) {
     const frame = processedFrames[f];
-    const offsetX = f * FRAME_SIZE;
-
+    const offsetX = f * frameSize;
     for (let y = 0; y < frame.height; y++) {
       for (let x = 0; x < frame.width; x++) {
         const srcIdx = (y * frame.width + x) * 4;
         const dstIdx = (y * sheetWidth + (offsetX + x)) * 4;
-
         sheetBuffer[dstIdx] = frame.buffer[srcIdx];
         sheetBuffer[dstIdx + 1] = frame.buffer[srcIdx + 1];
         sheetBuffer[dstIdx + 2] = frame.buffer[srcIdx + 2];
@@ -154,78 +150,35 @@ async function buildPlayerSpritesheet() {
     }
   }
 
-  // Salva o spritesheet
-  const outputPath = path.join(outputDir, 'player_sheet.png');
+  const outputPath = path.join(outputDir, outputName);
   await sharp(sheetBuffer, {
-    raw: {
-      width: sheetWidth,
-      height: sheetHeight,
-      channels: 4,
-    },
+    raw: { width: sheetWidth, height: sheetHeight, channels: 4 },
   })
     .png()
     .toFile(outputPath);
 
-  console.log(`  ✅ Salvo em: ${outputPath} (${sheetWidth}×${sheetHeight}, ${frameCount} frames)`);
+  console.log(`  ✅ Salvo em: ${outputPath} (${sheetWidth}×${sheetHeight}, ${frameNames.length} frames)`);
 }
 
 /**
- * Monta o sprite do projétil (bullet)
- * Pega o quadrante superior-direito da imagem (energia com trail)
+ * Monta sprite único (1 frame)
  */
-async function buildBulletSprite() {
-  console.log('\n💥 Montando sprite do bullet...');
-  const BULLET_SIZE = 16;
+async function buildSingleSprite(name, frameName, size, outputName) {
+  console.log(`\n💥 Montando sprite: ${name}...`);
 
-  const filePath = await findFrameFile('ref_bullet');
-  console.log(`  📷 ref_bullet → ${path.basename(filePath)}`);
+  const filePath = await findFrameFile(frameName);
+  console.log(`  📷 ${frameName} → ${path.basename(filePath)}`);
 
-  // A imagem tem 4 quadrantes — pegamos o superior-direito (energia com trail)
-  const metadata = await sharp(filePath).metadata();
-  const halfW = Math.floor(metadata.width / 2);
-  const halfH = Math.floor(metadata.height / 2);
+  const frame = await processFrame(filePath, size);
 
-  const frame = await sharp(filePath)
-    .extract({ left: halfW, top: 0, width: halfW, height: halfH })
-    .resize(BULLET_SIZE, BULLET_SIZE, {
-      kernel: sharp.kernel.nearest,
-      fit: 'contain',
-      background: { r: 255, g: 0, b: 255, alpha: 1 },
-    })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  const { data, info } = frame;
-  const pixels = Buffer.from(data);
-
-  let transparentCount = 0;
-  for (let i = 0; i < pixels.length; i += 4) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-    const isMagenta = r > 180 && g < 100 && b > 180;
-    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-    const isNearBlack = luminance < 15;
-    if (isMagenta || isNearBlack) {
-      pixels[i] = 0;
-      pixels[i + 1] = 0;
-      pixels[i + 2] = 0;
-      pixels[i + 3] = 0;
-      transparentCount++;
-    }
-  }
-
-  console.log(`    → ${transparentCount}/${pixels.length / 4} pixels transparentes`);
-
-  const outputPath = path.join(outputDir, 'bullet.png');
-  await sharp(pixels, {
-    raw: { width: info.width, height: info.height, channels: 4 },
+  const outputPath = path.join(outputDir, outputName);
+  await sharp(frame.buffer, {
+    raw: { width: frame.width, height: frame.height, channels: 4 },
   })
     .png()
     .toFile(outputPath);
 
-  console.log(`  ✅ Salvo em: ${outputPath} (${BULLET_SIZE}×${BULLET_SIZE})`);
+  console.log(`  ✅ Salvo em: ${outputPath} (${size}×${size})`);
 }
 
 // ─── Main ──────────────────────────────────────────────────────────
@@ -237,10 +190,22 @@ async function main() {
   console.log('');
 
   try {
-    await buildPlayerSpritesheet();
-    await buildBulletSprite();
-    console.log('');
-    console.log('✅ Tudo pronto! Spritesheets gerados com sucesso.');
+    // Player (8 frames de 32×32)
+    await buildSpritesheet('Player', PLAYER_FRAMES, FRAME_SIZE, 'player_sheet.png');
+
+    // Player bullet (16×16)
+    await buildSingleSprite('Player Bullet', 'ref_bullet', 16, 'bullet.png');
+
+    // Met enemy (2 frames de 32×32)
+    await buildSpritesheet('Met Enemy', ['ref_met_walk1', 'ref_met_walk2'], FRAME_SIZE, 'enemy_met_sheet.png');
+
+    // Turret enemy (2 frames de 32×32)
+    await buildSpritesheet('Turret Enemy', ['ref_turret_idle', 'ref_turret_shoot'], FRAME_SIZE, 'enemy_turret_sheet.png');
+
+    // Enemy bullet (16×16)
+    await buildSingleSprite('Enemy Bullet', 'ref_enemy_bullet', 16, 'enemy_bullet.png');
+
+    console.log('\n✅ Tudo pronto! Todos os spritesheets gerados com sucesso.');
   } catch (error) {
     console.error('❌ Erro:', error);
     process.exit(1);
@@ -248,3 +213,4 @@ async function main() {
 }
 
 main();
+
