@@ -83,8 +83,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     body.setSize(this.config.hitboxWidth, this.config.hitboxHeight);
     body.setOffset(this.config.hitboxOffsetX, this.config.hitboxOffsetY);
 
-    // Não pode sair do mundo
+    // Colide com as bordas do mundo (exceto embaixo → permite pit death)
     body.setCollideWorldBounds(true);
+    body.world.setBoundsCollision(true, true, true, false);
 
     // Drag para parar suavemente
     body.setDragX(600);

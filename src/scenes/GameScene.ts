@@ -39,7 +39,15 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     // ─── Mundo ────────────────────────────────────────────────
-    this.physics.world.setBounds(0, 0, this.levelConfig.worldWidth, this.levelConfig.worldHeight);
+    // checkDown = false → permite o player cair pelo fundo (pit death)
+    this.physics.world.setBounds(
+      0, 0,
+      this.levelConfig.worldWidth, this.levelConfig.worldHeight,
+      true,  // checkLeft
+      true,  // checkRight
+      true,  // checkTop
+      false  // checkDown → permite cair no buraco
+    );
 
     // ─── Background (parallax) ────────────────────────────────
     this.createBackground();
