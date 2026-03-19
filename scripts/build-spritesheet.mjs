@@ -205,6 +205,12 @@ async function main() {
     // Enemy bullet (16×16)
     await buildSingleSprite('Enemy Bullet', 'ref_enemy_bullet', 16, 'enemy_bullet.png');
 
+    // Dr. White (2 frames de 32×32)
+    await buildSpritesheet('Dr. White', ['ref_drwhite_sprite1', 'ref_drwhite_sprite2'], FRAME_SIZE, 'drwhite_sheet.png');
+
+    // Dr. White portrait (64×64)
+    await buildSingleSprite('Dr. White Portrait', 'ref_drwhite_portrait', 64, 'drwhite_portrait.png');
+
     console.log('\n✅ Tudo pronto! Todos os spritesheets gerados com sucesso.');
   } catch (error) {
     console.error('❌ Erro:', error);

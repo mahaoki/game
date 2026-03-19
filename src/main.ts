@@ -16,6 +16,8 @@ import { TitleScene } from './scenes/TitleScene';
 import { GameScene } from './scenes/GameScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { StageClearScene } from './scenes/StageClearScene';
+import { LabScene } from './scenes/LabScene';
+import { MissionSelectScene } from './scenes/MissionSelectScene';
 
 // Carrega a fonte "Press Start 2P" do Google Fonts
 const fontLink = document.createElement('link');
@@ -26,7 +28,7 @@ document.head.appendChild(fontLink);
 
 // Cria a configuração do Phaser (validada pelo Zod)
 const config = createPhaserConfig(
-  [BootScene, TitleScene, GameScene, GameOverScene, StageClearScene],
+  [BootScene, TitleScene, GameScene, GameOverScene, StageClearScene, LabScene, MissionSelectScene],
   {
     width: 320,
     height: 180,

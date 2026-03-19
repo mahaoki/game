@@ -103,5 +103,12 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 32,
     });
     this.load.image('enemy_bullet', 'assets/enemy_bullet.png');
+
+    // ─── Dr. White assets ─────────────────────────────────────
+    this.load.spritesheet('drwhite_sheet', 'assets/drwhite_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.image('drwhite_portrait', 'assets/drwhite_portrait.png');
   }
 }

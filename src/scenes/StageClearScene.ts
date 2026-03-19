@@ -113,7 +113,7 @@ export class StageClearScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown', () => {
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.time.delayedCall(600, () => {
-          this.scene.start('TitleScene');
+          this.scene.start('LabScene');
         });
       });
     });
