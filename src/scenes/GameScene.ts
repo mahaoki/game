@@ -315,6 +315,14 @@ export class GameScene extends Phaser.Scene {
         this.platforms
       );
       this.enemyGroup.add(enemy);
+
+      // Re-aplicar physics de turret (group.add() reseta defaults do body)
+      if (spawn.type === 'turret') {
+        const body = enemy.body as Phaser.Physics.Arcade.Body;
+        body.setImmovable(true);
+        body.setAllowGravity(false);
+      }
+
       this.enemies.push(enemy);
     }
   }
