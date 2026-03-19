@@ -110,6 +110,9 @@ export class GameScene extends Phaser.Scene {
     // ─── Stage info ───────────────────────────────────────────
     this.createStageInfo();
 
+    // ─── Portal de fim de stage ───────────────────────────────
+    this.createGoalPortal();
+
     this.isRespawning = false;
   }
 
@@ -135,6 +138,29 @@ export class GameScene extends Phaser.Scene {
     if (this.player.y > this.levelConfig.worldHeight + 20) {
       this.handlePitDeath();
     }
+
+    // Verifica se Player chegou ao portal de fim de stage
+    if (this.levelConfig.goalX && this.player.x >= this.levelConfig.goalX - 20) {
+      this.handleStageClear();
+    }
+  }
+
+  /** Player chegou ao portal — stage clear! */
+  private handleStageClear(): void {
+    if (this.isRespawning) return;
+    this.isRespawning = true; // Reusa flag para bloquear input
+
+    // Flash branco + fade
+    this.cameras.main.flash(500, 255, 255, 255);
+    this.player.setTint(0xffffff);
+    (this.player.body as Phaser.Physics.Arcade.Body).setVelocity(0);
+
+    this.time.delayedCall(1000, () => {
+      this.cameras.main.fadeOut(500, 255, 255, 255);
+      this.time.delayedCall(600, () => {
+        this.scene.start('StageClearScene');
+      });
+    });
   }
 
   /** Player caiu no buraco — perde 1 vida */
@@ -374,6 +400,42 @@ export class GameScene extends Phaser.Scene {
       yoyo: true,
       onComplete: () => stageText.destroy(),
     });
+  }
+
+  /** Cria portal visual no fim do stage */
+  private createGoalPortal(): void {
+    if (!this.levelConfig.goalX) return;
+    const gx = this.levelConfig.goalX;
+
+    // Coluna de energia (portal)
+    const portal = this.add.graphics();
+    portal.fillStyle(0x00ffaa, 0.3);
+    portal.fillRect(gx - 6, 60, 12, 112);
+    portal.fillStyle(0x00ffcc, 0.5);
+    portal.fillRect(gx - 3, 60, 6, 112);
+    portal.fillStyle(0xffffff, 0.7);
+    portal.fillRect(gx - 1, 60, 2, 112);
+
+    // Glow pulsante
+    const glow = this.add.graphics();
+    glow.fillStyle(0x00ff88, 0.15);
+    glow.fillCircle(gx, 120, 20);
+    this.tweens.add({
+      targets: glow,
+      alpha: { from: 0.3, to: 0.8 },
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Label "GOAL"
+    this.add
+      .text(gx, 52, '▼ GOAL', {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '4px',
+        color: '#00ff88',
+      })
+      .setOrigin(0.5);
   }
 
   /** Limpa ao sair */

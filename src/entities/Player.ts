@@ -309,8 +309,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    // Cooldown do tiro
-    this.playerActor.send({ type: 'SHOOT_END' });
+    // Mostra a pose de tiro por 200ms antes de resetar
+    this.scene.time.delayedCall(200, () => {
+      this.playerActor.send({ type: 'SHOOT_END' });
+    });
+
+    // Cooldown do tiro (impede tiro rápido)
     this.shootCooldownTimer?.destroy();
     this.shootCooldownTimer = this.scene.time.delayedCall(
       this.config.bulletCooldownMs,
@@ -462,10 +466,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.play('player_dash', true);
         break;
       case 'jumping':
-        this.play('player_jump', true);
+        if (context.isShooting) {
+          this.play('player_shoot', true);
+        } else {
+          this.play('player_jump', true);
+        }
         break;
       case 'falling':
-        this.play('player_fall', true);
+        if (context.isShooting) {
+          this.play('player_shoot', true);
+        } else {
+          this.play('player_fall', true);
+        }
         break;
       case 'running':
         if (context.isShooting) {
