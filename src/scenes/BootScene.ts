@@ -110,5 +110,20 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 32,
     });
     this.load.image('drwhite_portrait', 'assets/drwhite_portrait.png');
+
+    // ─── Vulcan Factory assets ────────────────────────────────
+    this.load.spritesheet('enemy_flamer_sheet', 'assets/enemy_flamer_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.spritesheet('enemy_dropper_sheet', 'assets/enemy_dropper_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.spritesheet('boss_vulcan_sheet', 'assets/boss_vulcan_sheet.png', {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
+    this.load.image('fire_projectile', 'assets/fire_projectile.png');
   }
 }

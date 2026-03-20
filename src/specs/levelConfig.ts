@@ -50,7 +50,7 @@ export type LevelConfig = z.infer<typeof LevelConfigSchema>;
 
 /** Schema de spawn de inimigo */
 const EnemySpawnSchema = z.object({
-  type: z.enum(['patrol', 'turret']),
+  type: z.enum(['patrol', 'turret', 'flamer', 'dropper']),
   x: z.number(),
   y: z.number(),
 });
@@ -62,6 +62,10 @@ export const LevelConfigWithEnemiesSchema = LevelConfigSchema.extend({
   enemies: z.array(EnemySpawnSchema).default([]),
   /** X position do portal de fim de stage */
   goalX: z.number().optional(),
+  /** X position onde começa a boss fight (trava câmera) */
+  bossZoneX: z.number().optional(),
+  /** Cor de fundo da fase */
+  bgColor: z.string().optional(),
 });
 
 export type LevelConfigWithEnemies = z.infer<typeof LevelConfigWithEnemiesSchema>;
@@ -193,3 +197,82 @@ export function getLevel1Config(): LevelConfigWithEnemies {
   });
 }
 
+/**
+ * Vulcan Factory — Fase de fogo industrial.
+ * 2400px, boss fight no final.
+ */
+export function getVulcanFactoryConfig(): LevelConfigWithEnemies {
+  return LevelConfigWithEnemiesSchema.parse({
+    name: 'Vulcan Factory',
+    worldWidth: 2400,
+    worldHeight: 180,
+    backgroundColor: '#1a0a0a',
+    bgColor: '#1a0a0a',
+    spawnPoint: { x: 40, y: 130 },
+    bossZoneX: 2280,
+    platforms: [
+      // ═══ SEÇÃO 1: Entrada da fábrica (0–500) ═══
+      { x: 130, y: 172, width: 260, height: 16 },
+      { x: 380, y: 172, width: 140, height: 16 },
+      { x: 100, y: 140, width: 48, height: 10 },
+      { x: 200, y: 120, width: 56, height: 10 },
+      { x: 320, y: 105, width: 48, height: 10 },
+
+      // ═══ SEÇÃO 2: Fornalha (500–1000) ═══
+      { x: 550, y: 172, width: 120, height: 16 },
+      { x: 720, y: 172, width: 100, height: 16 },
+      { x: 880, y: 172, width: 120, height: 16 },
+      { x: 620, y: 130, width: 56, height: 10 },
+      { x: 750, y: 110, width: 56, height: 10 },
+      { x: 850, y: 90, width: 64, height: 10 },
+
+      // ═══ SEÇÃO 3: Conveyor (1000–1500) ═══
+      { x: 1050, y: 172, width: 100, height: 16 },
+      { x: 1180, y: 172, width: 80, height: 16 },
+      { x: 1320, y: 172, width: 100, height: 16 },
+      { x: 1450, y: 172, width: 80, height: 16 },
+      { x: 1100, y: 135, width: 48, height: 10 },
+      { x: 1250, y: 115, width: 56, height: 10 },
+      { x: 1380, y: 95, width: 48, height: 10 },
+
+      // ═══ SEÇÃO 4: Chaminé (1500–1900) ═══
+      { x: 1560, y: 172, width: 100, height: 16 },
+      { x: 1700, y: 172, width: 120, height: 16 },
+      { x: 1860, y: 172, width: 80, height: 16 },
+      { x: 1620, y: 140, width: 48, height: 10 },
+      { x: 1720, y: 115, width: 56, height: 10 },
+      { x: 1820, y: 90, width: 56, height: 10 },
+
+      // ═══ SEÇÃO 5: Arena do Boss (1900–2400) ═══
+      // Chão largo para boss fight
+      { x: 2000, y: 172, width: 200, height: 16 },
+      { x: 2250, y: 172, width: 300, height: 16 },
+      // Plataformas de escape (para pular os ataques do boss)
+      { x: 2150, y: 130, width: 56, height: 10 },
+      { x: 2300, y: 100, width: 64, height: 10 },
+    ],
+
+    enemies: [
+      // SEÇÃO 1: intro flamers
+      { type: 'flamer', x: 380, y: 155 },
+      { type: 'patrol', x: 200, y: 155 },
+
+      // SEÇÃO 2: fornalha
+      { type: 'flamer', x: 560, y: 155 },
+      { type: 'turret', x: 850, y: 78 },
+      { type: 'dropper', x: 700, y: 30 },
+
+      // SEÇÃO 3: conveyor
+      { type: 'flamer', x: 1180, y: 155 },
+      { type: 'patrol', x: 1320, y: 155 },
+      { type: 'dropper', x: 1250, y: 30 },
+      { type: 'turret', x: 1380, y: 83 },
+
+      // SEÇÃO 4: chaminé
+      { type: 'flamer', x: 1700, y: 155 },
+      { type: 'dropper', x: 1620, y: 30 },
+      { type: 'turret', x: 1820, y: 78 },
+      { type: 'patrol', x: 1860, y: 155 },
+    ],
+  });
+}

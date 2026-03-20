@@ -9,7 +9,7 @@
  */
 import Phaser from 'phaser';
 import { createActor } from 'xstate';
-import { patrolMachine, turretMachine, type EnemyType } from '../core/machines/enemyMachine';
+import { patrolMachine, turretMachine, flamerMachine, dropperMachine, type EnemyType } from '../core/machines/enemyMachine';
 import { getEnemyConfig, type EnemyConfig } from '../specs/enemyConfig';
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
@@ -38,8 +38,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     enemyBulletGroup?: Phaser.Physics.Arcade.Group,
     platforms?: Phaser.Physics.Arcade.StaticGroup
   ) {
-    const textureKey = type === 'patrol' ? 'enemy_met_sheet' : 'enemy_turret_sheet';
-    super(scene, x, y, textureKey, 0);
+    const textureMap: Record<EnemyType, string> = {
+      patrol: 'enemy_met_sheet',
+      turret: 'enemy_turret_sheet',
+      flamer: 'enemy_flamer_sheet',
+      dropper: 'enemy_dropper_sheet',
+    };
+    super(scene, x, y, textureMap[type], 0);
 
     this.enemyType = type;
     this.config = getEnemyConfig();
@@ -61,29 +66,49 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       body.setImmovable(true);
       body.setAllowGravity(false);
     }
+    if (type === 'dropper') {
+      body.setAllowGravity(false);
+      body.setImmovable(true);
+    }
 
     // Criar animações
     this.createAnimations();
 
     // Iniciar máquina
-    const machine = type === 'patrol' ? patrolMachine : turretMachine;
-    this.enemyActor = createActor(machine as typeof patrolMachine);
+    const machineMap = {
+      patrol: patrolMachine,
+      turret: turretMachine,
+      flamer: flamerMachine,
+      dropper: dropperMachine,
+    };
+    this.enemyActor = createActor(machineMap[type] as typeof patrolMachine);
     this.enemyActor.start();
 
-    // Turret: iniciar loop de tiro
+    // Turret/Flamer: iniciar loops
     if (type === 'turret') {
       this.startTurretLoop();
+    }
+    if (type === 'flamer') {
+      this.startFlamerLoop();
     }
   }
 
   private createAnimations(): void {
-    const prefix = this.enemyType === 'patrol' ? 'met' : 'turret';
-    const sheetKey = this.enemyType === 'patrol' ? 'enemy_met_sheet' : 'enemy_turret_sheet';
+    const prefixMap: Record<EnemyType, string> = {
+      patrol: 'met', turret: 'turret', flamer: 'flamer', dropper: 'dropper',
+    };
+    const sheetMap: Record<EnemyType, string> = {
+      patrol: 'enemy_met_sheet', turret: 'enemy_turret_sheet',
+      flamer: 'enemy_flamer_sheet', dropper: 'enemy_dropper_sheet',
+    };
+    const prefix = prefixMap[this.enemyType];
+    const sheetKey = sheetMap[this.enemyType];
 
     if (!this.scene.anims.exists(`${prefix}_walk`)) {
+      const walkFrames = this.enemyType === 'flamer' ? [0, 1] : [0, 1];
       this.scene.anims.create({
         key: `${prefix}_walk`,
-        frames: this.scene.anims.generateFrameNumbers(sheetKey, { frames: [0, 1] }),
+        frames: this.scene.anims.generateFrameNumbers(sheetKey, { frames: walkFrames }),
         frameRate: 4,
         repeat: -1,
       });
@@ -99,9 +124,10 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (!this.scene.anims.exists(`${prefix}_shoot`)) {
+      const shootFrame = this.enemyType === 'flamer' ? 2 : 1;
       this.scene.anims.create({
         key: `${prefix}_shoot`,
-        frames: this.scene.anims.generateFrameNumbers(sheetKey, { frames: [1] }),
+        frames: this.scene.anims.generateFrameNumbers(sheetKey, { frames: [shootFrame] }),
         frameRate: 1,
         repeat: 0,
       });
@@ -113,10 +139,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const state = this.enemyActor.getSnapshot().value;
     if (state === 'dead' || state === 'dying') return;
 
-    if (this.enemyType === 'patrol') {
-      this.updatePatrol();
-    } else {
-      this.updateTurret();
+    switch (this.enemyType) {
+      case 'patrol': this.updatePatrol(); break;
+      case 'turret': this.updateTurret(); break;
+      case 'flamer': this.updateFlamer(); break;
+      case 'dropper': this.updateDropper(); break;
     }
   }
 
@@ -319,6 +346,156 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   isAlive(): boolean {
     const state = this.enemyActor.getSnapshot().value;
     return state !== 'dead' && state !== 'dying';
+  }
+
+  // ─── Flamer AI ──────────────────────────────────────────────────
+
+  /** Inicia loop de detecção do flamer */
+  private startFlamerLoop(): void {
+    this.shootTimer = this.scene.time.addEvent({
+      delay: 1500,
+      callback: () => {
+        if (!this.active) return;
+        const state = this.enemyActor.getSnapshot().value;
+        if (state !== 'detecting') return;
+
+        // Cospe fogo
+        this.enemyActor.send({ type: 'SHOOT' });
+        this.play('flamer_shoot', true);
+
+        // Spawna projétil de fogo
+        if (this.enemyBulletGroup && this.playerRef) {
+          const dir = this.playerRef.x > this.x ? 1 : -1;
+          const bullet = this.enemyBulletGroup.get(
+            this.x + dir * 12, this.y, 'fire_projectile'
+          ) as Phaser.Physics.Arcade.Sprite;
+          if (bullet) {
+            bullet.setActive(true).setVisible(true).setDisplaySize(10, 10);
+            const bBody = bullet.body as Phaser.Physics.Arcade.Body;
+            bBody.setAllowGravity(false);
+            bBody.setVelocityX(dir * 100);
+            this.scene.time.delayedCall(2000, () => {
+              if (bullet.active) {
+                bullet.setActive(false).setVisible(false);
+                bBody.setVelocity(0);
+              }
+            });
+          }
+        }
+
+        // Cooldown → volta a patrulhar
+        this.scene.time.delayedCall(500, () => {
+          if (this.active) {
+            this.enemyActor.send({ type: 'SHOOT_COOLDOWN_DONE' });
+          }
+        });
+      },
+      loop: true,
+    });
+  }
+
+  /** IA do Flamer — patrulha + detecta + cospe fogo */
+  private updateFlamer(): void {
+    const state = this.enemyActor.getSnapshot().value;
+    if (state === 'hurt') return;
+
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    const ctx = this.enemyActor.getSnapshot().context;
+
+    if (state === 'patrolling') {
+      // Igual ao patrol
+      const speed = this.config.patrolSpeed;
+      body.setVelocityX(ctx.facing === 'left' ? -speed : speed);
+      this.setFlipX(ctx.facing === 'right');
+      this.play('flamer_walk', true);
+
+      // Edge detection
+      this.checkEdge();
+
+      // Detecta player
+      if (this.playerRef) {
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
+        if (dist < 100) {
+          this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
+        }
+      }
+    } else if (state === 'detecting') {
+      body.setVelocityX(0);
+      this.play('flamer_idle', true);
+      // Face player
+      if (this.playerRef) {
+        this.setFlipX(this.playerRef.x > this.x);
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
+        if (dist > 120) {
+          this.enemyActor.send({ type: 'PLAYER_OUT_OF_RANGE' });
+        }
+      }
+    } else if (state === 'flaming') {
+      body.setVelocityX(0);
+    }
+  }
+
+  /** Edge detection helper (reused from patrol) */
+  private checkEdge(): void {
+    if (!this.platformsRef) return;
+    const ctx = this.enemyActor.getSnapshot().context;
+    const checkX = ctx.facing === 'left' ? this.x - 16 : this.x + 16;
+    const checkY = this.y + 16;
+    let hasGround = false;
+    this.platformsRef.getChildren().forEach((plat) => {
+      const p = plat as Phaser.Physics.Arcade.Sprite;
+      const pBody = p.body as Phaser.Physics.Arcade.StaticBody;
+      if (
+        checkX >= pBody.x && checkX <= pBody.x + pBody.width &&
+        Math.abs(checkY - pBody.y) < 20
+      ) {
+        hasGround = true;
+      }
+    });
+    if (!hasGround) {
+      this.enemyActor.send({ type: 'EDGE_DETECTED' });
+    }
+  }
+
+  // ─── Dropper AI ─────────────────────────────────────────────────
+
+  /** IA do Dropper — pendura no teto, cai quando player embaixo */
+  private updateDropper(): void {
+    const state = this.enemyActor.getSnapshot().value;
+    if (state === 'hurt' || state === 'exploding') return;
+
+    if (state === 'hanging') {
+      this.play('dropper_idle', true);
+      // Detecta player abaixo
+      if (this.playerRef) {
+        const dx = Math.abs(this.playerRef.x - this.x);
+        const dy = this.playerRef.y - this.y;
+        if (dx < 24 && dy > 0 && dy < 120) {
+          this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
+          // Ativa gravidade para cair
+          const body = this.body as Phaser.Physics.Arcade.Body;
+          body.setAllowGravity(true);
+          body.setImmovable(false);
+        }
+      }
+    } else if (state === 'dropping') {
+      this.play('dropper_shoot', true);
+      // Checa se atingiu o chão
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      if (body.blocked.down || body.touching.down) {
+        this.enemyActor.send({ type: 'EDGE_DETECTED' }); // hit ground → explode
+        // Explosão visual
+        body.setVelocity(0);
+        body.setEnable(false);
+        this.setTint(0xff6600);
+        this.scene.time.delayedCall(200, () => {
+          this.enemyActor.send({ type: 'DEATH_ANIM_DONE' });
+          this.setActive(false);
+          this.setVisible(false);
+          this.destroy();
+        });
+      }
+    }
   }
 
   destroy(fromScene?: boolean): void {

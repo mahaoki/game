@@ -11,7 +11,7 @@ import { createMachine, assign } from 'xstate';
 
 // ─── Tipos ────────────────────────────────────────────────────────
 
-export type EnemyType = 'patrol' | 'turret';
+export type EnemyType = 'patrol' | 'turret' | 'flamer' | 'dropper';
 export type EnemyFacing = 'left' | 'right';
 
 export interface EnemyContext {
@@ -205,5 +205,185 @@ export const turretMachine = createMachine({
     dead: {
       type: 'final',
     },
+  },
+});
+
+// ─── Flamer Machine ──────────────────────────────────────────────
+
+const flamerInitialContext: EnemyContext = {
+  type: 'flamer',
+  health: 3,
+  maxHealth: 3,
+  facing: 'left',
+  damage: 2,
+};
+
+export const flamerMachine = createMachine({
+  id: 'flamer',
+  initial: 'patrolling',
+  context: flamerInitialContext,
+  states: {
+    /** Andando — igual ao patrol */
+    patrolling: {
+      on: {
+        EDGE_DETECTED: {
+          actions: assign({
+            facing: ({ context }) =>
+              context.facing === 'left' ? 'right' as EnemyFacing : 'left' as EnemyFacing,
+          }),
+        },
+        WALL_HIT: {
+          actions: assign({
+            facing: ({ context }) =>
+              context.facing === 'left' ? 'right' as EnemyFacing : 'left' as EnemyFacing,
+          }),
+        },
+        PLAYER_IN_RANGE: { target: 'detecting' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+
+    /** Detectou player — para e mira */
+    detecting: {
+      on: {
+        SHOOT: { target: 'flaming' },
+        PLAYER_OUT_OF_RANGE: { target: 'patrolling' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+
+    /** Cuspindo fogo */
+    flaming: {
+      on: {
+        SHOOT_COOLDOWN_DONE: { target: 'patrolling' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+
+    hurt: {
+      on: { HURT_END: { target: 'patrolling' } },
+    },
+    dying: {
+      on: { DEATH_ANIM_DONE: { target: 'dead' } },
+    },
+    dead: { type: 'final' },
+  },
+});
+
+// ─── Dropper Machine ─────────────────────────────────────────────
+
+const dropperInitialContext: EnemyContext = {
+  type: 'dropper',
+  health: 1,
+  maxHealth: 1,
+  facing: 'left',
+  damage: 4,
+};
+
+export const dropperMachine = createMachine({
+  id: 'dropper',
+  initial: 'hanging',
+  context: dropperInitialContext,
+  states: {
+    /** Pendurado no teto — esperando player */
+    hanging: {
+      on: {
+        PLAYER_IN_RANGE: { target: 'dropping' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+
+    /** Caindo */
+    dropping: {
+      on: {
+        EDGE_DETECTED: { target: 'exploding' }, // Reusa EDGE_DETECTED como "hit ground"
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+
+    /** Explodindo no chão */
+    exploding: {
+      on: {
+        DEATH_ANIM_DONE: { target: 'dead' },
+      },
+    },
+
+    hurt: {
+      on: { HURT_END: { target: 'hanging' } },
+    },
+    dying: {
+      on: { DEATH_ANIM_DONE: { target: 'dead' } },
+    },
+    dead: { type: 'final' },
   },
 });

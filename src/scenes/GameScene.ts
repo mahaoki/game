@@ -17,7 +17,8 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { InputManager } from '../core/InputManager';
 import { HealthBar } from '../ui/components/HealthBar';
-import { getLevel1Config, type LevelConfigWithEnemies } from '../specs/levelConfig';
+import { getLevel1Config, getVulcanFactoryConfig, type LevelConfigWithEnemies } from '../specs/levelConfig';
+import { Boss } from '../entities/Boss';
 
 export class GameScene extends Phaser.Scene {
   private player!: Player;
@@ -28,18 +29,24 @@ export class GameScene extends Phaser.Scene {
   private enemyGroup!: Phaser.Physics.Arcade.Group;
   private enemyBulletGroup!: Phaser.Physics.Arcade.Group;
   private enemies: Enemy[] = [];
+  private boss: Boss | null = null;
   private levelConfig!: LevelConfigWithEnemies;
   private livesText!: Phaser.GameObjects.Text;
   private isRespawning: boolean = false;
+  private bossTriggered: boolean = false;
 
   constructor() {
     super({ key: 'GameScene' });
   }
 
   create(): void {
-    // Carrega config do nível
-    this.levelConfig = getLevel1Config();
+    // Carrega config do nível baseado em levelId
+    const data = this.scene.settings.data as { levelId?: string } | undefined;
+    const levelId = data?.levelId ?? 'intro';
+    this.levelConfig = this.getLevelConfig(levelId);
     this.enemies = [];
+    this.boss = null;
+    this.bossTriggered = false;
 
     // Fade-in ao entrar
     this.cameras.main.fadeIn(500, 0, 0, 0);
@@ -134,6 +141,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // Atualiza boss
+    if (this.boss && this.boss.active) {
+      this.boss.updateBoss();
+    }
+
     // Verifica se Player caiu no buraco
     if (this.player.y > this.levelConfig.worldHeight + 20) {
       this.handlePitDeath();
@@ -143,12 +155,76 @@ export class GameScene extends Phaser.Scene {
     if (this.levelConfig.goalX && this.player.x >= this.levelConfig.goalX - 20) {
       this.handleStageClear();
     }
+
+    // Verifica se Player entrou na zona do boss
+    if (this.levelConfig.bossZoneX && !this.bossTriggered && this.player.x >= this.levelConfig.bossZoneX - 40) {
+      this.triggerBossFight();
+    }
+  }
+
+  /** Retorna config do level pelo ID */
+  private getLevelConfig(levelId: string): LevelConfigWithEnemies {
+    switch (levelId) {
+      case 'vulcan': return getVulcanFactoryConfig();
+      default: return getLevel1Config();
+    }
+  }
+
+  /** Inicia a boss fight */
+  private triggerBossFight(): void {
+    this.bossTriggered = true;
+
+    // Trava a câmera na arena
+    const bossX = this.levelConfig.bossZoneX!;
+    const { width } = this.scale;
+    this.cameras.main.stopFollow();
+    this.cameras.main.pan(bossX - width / 4, this.levelConfig.worldHeight / 2, 500);
+
+    // Spawn do boss
+    this.time.delayedCall(800, () => {
+      this.boss = new Boss(
+        this,
+        bossX + 60,
+        130,
+        this.player,
+        this.enemyBulletGroup,
+        bossX - 80,
+        bossX + 120
+      );
+
+      // Colisão boss vs plataformas
+      this.physics.add.collider(this.boss, this.platforms);
+
+      // Player bala vs boss
+      this.physics.add.overlap(this.bulletGroup, this.boss, (_bossObj, bulletObj) => {
+        const bullet = bulletObj as Phaser.Physics.Arcade.Sprite;
+        if (!bullet.active) return;
+        bullet.setActive(false);
+        bullet.setVisible(false);
+        (bullet.body as Phaser.Physics.Arcade.Body).setVelocity(0);
+        this.boss?.takeDamage(1);
+      });
+
+      // Boss contato vs player
+      this.physics.add.overlap(this.player, this.boss, () => {
+        this.player.takeDamage(3);
+      });
+
+      // Boss projectile vs player (usa enemyBulletGroup existente)
+
+      // Quando boss morre → stage clear
+      this.events.on('boss-defeated', () => {
+        this.time.delayedCall(1000, () => {
+          this.handleStageClear();
+        });
+      });
+    });
   }
 
   /** Player chegou ao portal — stage clear! */
   private handleStageClear(): void {
     if (this.isRespawning) return;
-    this.isRespawning = true; // Reusa flag para bloquear input
+    this.isRespawning = true;
 
     // Flash branco + fade
     this.cameras.main.flash(500, 255, 255, 255);

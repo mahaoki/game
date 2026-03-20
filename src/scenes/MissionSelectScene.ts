@@ -13,13 +13,14 @@ interface MissionData {
   subtitle: string;
   color: number;
   icon: string;
+  levelId: string;
 }
 
 const MISSIONS: MissionData[] = [
-  { name: 'Vulcan Factory', subtitle: 'Fire Zone', color: 0xcc3333, icon: '🔥' },
-  { name: 'Frost Cavern', subtitle: 'Ice Zone', color: 0x3366cc, icon: '❄️' },
-  { name: 'Storm Tower', subtitle: 'Electric Zone', color: 0xccaa33, icon: '⚡' },
-  { name: 'Shadow Base', subtitle: 'Dark Zone', color: 0x8833aa, icon: '🌑' },
+  { name: 'Vulcan Factory', subtitle: 'Fire Zone', color: 0xcc3333, icon: '🔥', levelId: 'vulcan' },
+  { name: 'Frost Cavern', subtitle: 'Ice Zone', color: 0x3366cc, icon: '❄️', levelId: 'frost' },
+  { name: 'Storm Tower', subtitle: 'Electric Zone', color: 0xccaa33, icon: '⚡', levelId: 'storm' },
+  { name: 'Shadow Base', subtitle: 'Dark Zone', color: 0x8833aa, icon: '🌑', levelId: 'shadow' },
 ];
 
 export class MissionSelectScene extends Phaser.Scene {
@@ -246,8 +247,7 @@ export class MissionSelectScene extends Phaser.Scene {
       onComplete: () => {
         this.cameras.main.fadeOut(500, 0, 0, 0);
         this.time.delayedCall(600, () => {
-          // Carrega o GameScene (por enquanto recarrega Intro Stage)
-          this.scene.start('GameScene');
+          this.scene.start('GameScene', { levelId: mission.levelId });
         });
       },
     });

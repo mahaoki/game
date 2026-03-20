@@ -211,6 +211,18 @@ async function main() {
     // Dr. White portrait (64×64)
     await buildSingleSprite('Dr. White Portrait', 'ref_drwhite_portrait', 64, 'drwhite_portrait.png');
 
+    // Flamer enemy (3 frames de 32×32)
+    await buildSpritesheet('Flamer Enemy', ['ref_flamer_walk1', 'ref_flamer_walk2', 'ref_flamer_fire'], FRAME_SIZE, 'enemy_flamer_sheet.png');
+
+    // Dropper enemy (2 frames de 32×32)
+    await buildSpritesheet('Dropper Enemy', ['ref_dropper_hang', 'ref_dropper_fall'], FRAME_SIZE, 'enemy_dropper_sheet.png');
+
+    // Vulcan Lord boss (4 frames de 64×64)
+    await buildSpritesheet('Vulcan Lord Boss', ['ref_boss_idle', 'ref_boss_jump', 'ref_boss_attack', 'ref_boss_hurt'], 64, 'boss_vulcan_sheet.png');
+
+    // Fire projectile (16×16)
+    await buildSingleSprite('Fire Projectile', 'ref_fire_projectile', 16, 'fire_projectile.png');
+
     console.log('\n✅ Tudo pronto! Todos os spritesheets gerados com sucesso.');
   } catch (error) {
     console.error('❌ Erro:', error);
