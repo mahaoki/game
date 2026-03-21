@@ -59,8 +59,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     // Configurar física
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(20 * S, 24 * S);
-    body.setOffset(6 * S, 8 * S);
+    body.setSize(20, 24);
+    body.setOffset(6, 8);
     this.setDisplaySize(this.config.spriteSize, this.config.spriteSize);
 
     if (type === 'turret') {

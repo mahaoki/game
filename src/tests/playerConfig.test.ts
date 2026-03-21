@@ -25,8 +25,8 @@ describe('PlayerConfigSchema', () => {
     expect(config.maxBullets).toBe(3);
     expect(config.spriteWidth).toBe(32 * S);
     expect(config.spriteHeight).toBe(32 * S);
-    expect(config.hitboxWidth).toBe(16 * S);
-    expect(config.hitboxHeight).toBe(24 * S);
+    expect(config.hitboxWidth).toBe(16);
+    expect(config.hitboxHeight).toBe(24);
   });
 
   it('deve aceitar overrides parciais', () => {

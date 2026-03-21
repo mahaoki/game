@@ -46,8 +46,8 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     // Configura body
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(48 * S, 56 * S);
-    body.setOffset(8 * S, 8 * S);
+    body.setSize(48, 56);
+    body.setOffset(8, 8);
     body.setCollideWorldBounds(false);
     this.setDisplaySize(64 * S, 64 * S);
 
