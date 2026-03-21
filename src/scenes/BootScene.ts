@@ -125,5 +125,6 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 64,
     });
     this.load.image('fire_projectile', 'assets/fire_projectile.png');
+    this.load.image('powerup_fire', 'assets/powerup_fire.png');
   }
 }

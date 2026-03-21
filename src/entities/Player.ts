@@ -47,6 +47,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Timer para o efeito de piscar (i-frames) */
   private blinkTween: Phaser.Tweens.Tween | null = null;
 
+  /** Power-ups ativos */
+  private hasFirePower: boolean = false;
+
+  /** Arma atual */
+  private currentWeapon: 'normal' | 'fire' = 'normal';
+
+  /** HUD indicador de arma */
+  private weaponIndicator: Phaser.GameObjects.Text | null = null;
+
   constructor(
     scene: Phaser.Scene,
     x: number,
@@ -243,6 +252,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.performShoot();
     }
 
+    // ─── Trocar arma ──────────────────────────────────────────
+    if (input.switchWeapon) {
+      this.switchWeapon();
+    }
+
     // ─── Animação ─────────────────────────────────────────────
     this.updateAnimation(state as string);
   }
@@ -289,11 +303,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const bulletX = this.x + direction * 16;
     const bulletY = this.y - 2;
 
-    const bullet = this.bulletGroup.get(bulletX, bulletY, 'bullet_sprite') as Phaser.Physics.Arcade.Sprite;
+    const useFire = this.currentWeapon === 'fire';
+    const bullet = this.bulletGroup.get(bulletX, bulletY,
+      useFire ? 'fire_projectile' : 'bullet_sprite'
+    ) as Phaser.Physics.Arcade.Sprite;
     if (bullet) {
       bullet.setActive(true);
       bullet.setVisible(true);
-      bullet.setDisplaySize(8, 6);
+      bullet.setDisplaySize(useFire ? 10 : 8, useFire ? 10 : 6);
+      if (useFire) {
+        bullet.setTint(0xff6600);
+        bullet.setData('damage', 2);
+      } else {
+        bullet.clearTint();
+        bullet.setData('damage', 1);
+      }
       const bulletBody = bullet.body as Phaser.Physics.Arcade.Body;
       bulletBody.setAllowGravity(false);
       bulletBody.setVelocityX(direction * this.config.bulletSpeed);
@@ -380,6 +404,72 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   /**
    * Morte por cair no buraco — perde 1 vida inteira, respawn.
    */
+  // ─── Power-ups ───────────────────────────────────────────────────
+
+  /** Ativa power-up de fogo — desbloqueia arma fire */
+  activateFirePower(): void {
+    this.hasFirePower = true;
+    this.currentWeapon = 'fire';
+
+    // Flash visual de obtenção
+    this.setTint(0xff3333);
+    this.scene.cameras.main.flash(300, 255, 100, 0);
+    this.updateWeaponIndicator();
+  }
+
+  /** Troca a arma ativa (normal ↔ fire) */
+  private switchWeapon(): void {
+    if (!this.hasFirePower) return; // Só troca se tem fire desbloqueado
+
+    if (this.currentWeapon === 'normal') {
+      this.currentWeapon = 'fire';
+      this.setTint(0xff3333); // Vermelho
+    } else {
+      this.currentWeapon = 'normal';
+      this.clearTint();
+    }
+
+    this.updateWeaponIndicator();
+
+    // Feedback visual rápido
+    this.scene.cameras.main.flash(100, 150, 150, 150);
+  }
+
+  /** Atualiza o indicador de arma na HUD */
+  private updateWeaponIndicator(): void {
+    if (this.weaponIndicator) {
+      this.weaponIndicator.destroy();
+    }
+
+    const label = this.currentWeapon === 'fire' ? '🔥 FIRE' : '● NORMAL';
+    const color = this.currentWeapon === 'fire' ? '#ff4400' : '#00ccff';
+
+    this.weaponIndicator = this.scene.add.text(
+      this.scene.scale.width - 4, 4,
+      label,
+      {
+        fontFamily: '"Press Start 2P", monospace',
+        fontSize: '3px',
+        color,
+        stroke: '#000000',
+        strokeThickness: 1,
+      }
+    ).setOrigin(1, 0).setScrollFactor(0).setDepth(900);
+  }
+
+  /** Retorna a arma atual */
+  getCurrentWeapon(): 'normal' | 'fire' {
+    return this.currentWeapon;
+  }
+
+  /** Retorna se tem fire power ativo */
+  getHasFirePower(): boolean {
+    return this.hasFirePower;
+  }
+
+  // ─── Morte e Respawn ────────────────────────────────────────────
+
+  /** Chamada quando player cai no buraco */
   pitDeath(): void {
     const state = this.playerActor.getSnapshot().value;
     if (state === 'dead') return;

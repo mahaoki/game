@@ -299,9 +299,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     this.scene.time.delayedCall(1800, () => {
       this.bossActor.send({ type: 'DEATH_ANIM_DONE' });
+      const dropX = this.x;
+      const dropY = this.y;
       this.healthBar.destroy();
       this.destroy();
-      this.scene.events.emit('boss-defeated');
+      this.scene.events.emit('boss-defeated', dropX, dropY);
     });
   }
 

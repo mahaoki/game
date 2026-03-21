@@ -223,6 +223,9 @@ async function main() {
     // Fire projectile (16×16)
     await buildSingleSprite('Fire Projectile', 'ref_fire_projectile', 16, 'fire_projectile.png');
 
+    // Fire power-up (16×16)
+    await buildSingleSprite('Fire Power-Up', 'ref_powerup_fire', 16, 'powerup_fire.png');
+
     console.log('\n✅ Tudo pronto! Todos os spritesheets gerados com sucesso.');
   } catch (error) {
     console.error('❌ Erro:', error);

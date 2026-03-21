@@ -19,6 +19,8 @@ export class LabScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+    const data = this.scene.settings.data as { completedLevel?: string } | undefined;
+    const completedLevel = data?.completedLevel;
 
     // ─── Background do laboratório ────────────────────────────
     this.createLabBackground();
@@ -58,6 +60,11 @@ export class LabScene extends Phaser.Scene {
       .setDisplaySize(32, 32)
       .setAlpha(0);
 
+    // Aplica tint vermelho se voltou de Vulcan (já tem fire power)
+    if (completedLevel === 'vulcan') {
+      player.setTint(0xff3333);
+    }
+
     // ─── Efeito de teleporte (chegada) ────────────────────────
     // Flash na plataforma
     const teleFlash = this.add.graphics();
@@ -83,7 +90,7 @@ export class LabScene extends Phaser.Scene {
           onComplete: () => {
             // Dr. White começa a falar
             drWhite.play('drwhite_talk');
-            this.startDialogue(drWhite);
+            this.startDialogue(drWhite, completedLevel);
           },
         });
       },
@@ -170,26 +177,65 @@ export class LabScene extends Phaser.Scene {
   }
 
   /** Inicia o diálogo do Dr. White */
-  private startDialogue(drWhite: Phaser.GameObjects.Sprite): void {
+  private startDialogue(drWhite: Phaser.GameObjects.Sprite, completedLevel?: string): void {
     this.dialog = new DialogBox(this);
 
-    const lines: DialogLine[] = [
-      {
-        speaker: 'Dr. White',
-        text: 'Mega Pixel, bem-vindo de volta!',
-        portrait: 'drwhite_portrait',
-      },
-      {
-        speaker: 'Dr. White',
-        text: 'Detectamos atividade inimiga em varias regioes.',
-        portrait: 'drwhite_portrait',
-      },
-      {
-        speaker: 'Dr. White',
-        text: 'Escolha sua proxima missao com cuidado.',
-        portrait: 'drwhite_portrait',
-      },
-    ];
+    let lines: DialogLine[];
+
+    if (completedLevel === 'vulcan') {
+      // Diálogo sobre o upgrade de fogo
+      lines = [
+        {
+          speaker: 'Dr. White',
+          text: 'Mega Pixel! Voce derrotou o Vulcan Lord!',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Vejo que voce absorveu a energia dele...',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Excelente! Agora voce tem o FIRE POWER!',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Seus tiros de fogo causam o dobro de dano.',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Pressione A para alternar entre suas armas.',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Use o fire power contra os proximos inimigos!',
+          portrait: 'drwhite_portrait',
+        },
+      ];
+    } else {
+      // Diálogo genérico
+      lines = [
+        {
+          speaker: 'Dr. White',
+          text: 'Mega Pixel, bem-vindo de volta!',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Detectamos atividade inimiga em varias regioes.',
+          portrait: 'drwhite_portrait',
+        },
+        {
+          speaker: 'Dr. White',
+          text: 'Escolha sua proxima missao com cuidado.',
+          portrait: 'drwhite_portrait',
+        },
+      ];
+    }
 
     this.dialog.start(lines, () => {
       // Após diálogo → Mission Select

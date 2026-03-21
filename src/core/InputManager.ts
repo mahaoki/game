@@ -24,6 +24,8 @@ export interface PlayerInput {
   shoot: boolean;
   /** Pressionou dash neste frame? (edge-triggered) */
   dash: boolean;
+  /** Pressionou trocar arma neste frame? (edge-triggered) */
+  switchWeapon: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export class InputManager {
   private jumpKey: Phaser.Input.Keyboard.Key | null = null;
   private shootKey: Phaser.Input.Keyboard.Key | null = null;
   private dashKey: Phaser.Input.Keyboard.Key | null = null;
+  private switchWeaponKey: Phaser.Input.Keyboard.Key | null = null;
 
   // Touch state
   private touchLeft = false;
@@ -49,6 +52,7 @@ export class InputManager {
   private touchJump = false;
   private touchShoot = false;
   private touchDash = false;
+  private touchSwitchWeapon = false;
 
   constructor(scene: Phaser.Scene) {
     this.setupKeyboard(scene);
@@ -63,6 +67,7 @@ export class InputManager {
     this.jumpKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.shootKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
     this.dashKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
+    this.switchWeaponKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
   }
 
   /** Cria botões virtuais de touch na tela */
@@ -220,6 +225,7 @@ export class InputManager {
     const kbJump = Phaser.Input.Keyboard.JustDown(this.jumpKey!) || false;
     const kbShoot = Phaser.Input.Keyboard.JustDown(this.shootKey!) || false;
     const kbDash = Phaser.Input.Keyboard.JustDown(this.dashKey!) || false;
+    const kbSwitch = Phaser.Input.Keyboard.JustDown(this.switchWeaponKey!) || false;
 
     return {
       left: kbLeft || this.touchLeft,
@@ -227,6 +233,7 @@ export class InputManager {
       jump: kbJump || this.touchJump,
       shoot: kbShoot || this.touchShoot,
       dash: kbDash || this.touchDash,
+      switchWeapon: kbSwitch || this.touchSwitchWeapon,
     };
   }
 }

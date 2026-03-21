@@ -212,10 +212,63 @@ export class GameScene extends Phaser.Scene {
 
       // Boss projectile vs player (usa enemyBulletGroup existente)
 
-      // Quando boss morre → stage clear
-      this.events.on('boss-defeated', () => {
-        this.time.delayedCall(1000, () => {
-          this.handleStageClear();
+      // Quando boss morre → spawna power-up → stage clear
+      this.events.on('boss-defeated', (dropX: number, dropY: number) => {
+        // Spawna orbe de fire power-up
+        const powerup = this.physics.add.sprite(dropX, dropY - 20, 'powerup_fire');
+        powerup.setDisplaySize(16, 16);
+        powerup.setBounce(0.4);
+        (powerup.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
+
+        // Glow pulsante
+        this.tweens.add({
+          targets: powerup,
+          alpha: { from: 0.6, to: 1 },
+          scaleX: { from: 0.8, to: 1.2 },
+          scaleY: { from: 0.8, to: 1.2 },
+          duration: 400,
+          yoyo: true,
+          repeat: -1,
+        });
+
+        // Colisão com plataformas
+        this.physics.add.collider(powerup, this.platforms);
+
+        // Pickup pelo player
+        this.physics.add.overlap(this.player, powerup, () => {
+          if (!powerup.active) return;
+          powerup.setActive(false);
+          powerup.setVisible(false);
+          powerup.destroy();
+
+          // Ativa fire power no player
+          this.player.activateFirePower();
+
+          // Texto de obtenção
+          const text = this.add.text(
+            this.player.x, this.player.y - 24,
+            '🔥 FIRE POWER!',
+            {
+              fontFamily: '"Press Start 2P", monospace',
+              fontSize: '5px',
+              color: '#ff6600',
+              stroke: '#000000',
+              strokeThickness: 1,
+            }
+          ).setOrigin(0.5);
+
+          this.tweens.add({
+            targets: text,
+            y: text.y - 20,
+            alpha: 0,
+            duration: 1500,
+            onComplete: () => text.destroy(),
+          });
+
+          // Stage clear após pegar
+          this.time.delayedCall(2000, () => {
+            this.handleStageClear();
+          });
         });
       });
     });
@@ -234,7 +287,9 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(1000, () => {
       this.cameras.main.fadeOut(500, 255, 255, 255);
       this.time.delayedCall(600, () => {
-        this.scene.start('StageClearScene');
+        const data = this.scene.settings.data as { levelId?: string } | undefined;
+        const levelId = data?.levelId ?? 'intro';
+        this.scene.start('StageClearScene', { completedLevel: levelId });
       });
     });
   }

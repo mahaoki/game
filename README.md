@@ -39,6 +39,7 @@ Acesse **http://localhost:5173** no navegador.
 | Z | Pular |
 | X | Tiro |
 | C | Dash |
+| A | Trocar arma |
 | Enter / Space | Confirmar (menus e diálogos) |
 
 ## Scripts
