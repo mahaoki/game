@@ -4,23 +4,24 @@
  * Define e valida a configuração do Phaser usando Zod.
  * Todos os valores passam por validação antes de criar o jogo.
  * 
- * 🎮 Resolução: 320×180 pixels (paisagem 16:9)
- * 🔍 Zoom: 4× para desktop (1280×720 na tela)
+ * 🎮 Resolução: 640×360 pixels (paisagem 16:9)
+ * 🔍 Zoom: 2× para desktop (1280×720 na tela)
  * 🎨 Pixel Art: ativado, sem suavização
  */
 import { z } from 'zod';
 import Phaser from 'phaser';
+import { GAME_WIDTH, GAME_HEIGHT, GAME_ZOOM, S } from './scaleConstants';
 
 // ─── Schema Zod para validar a configuração ───────────────────────
 export const GameConfigSchema = z.object({
   /** Largura interna do jogo em pixels */
-  width: z.number().int().positive().default(320),
+  width: z.number().int().positive().default(GAME_WIDTH),
   /** Altura interna do jogo em pixels */
-  height: z.number().int().positive().default(180),
+  height: z.number().int().positive().default(GAME_HEIGHT),
   /** Ativa renderização pixel art (sem suavização) */
   pixelArt: z.boolean().default(true),
-  /** Fator de zoom (320×4 = 1280px no desktop) */
-  zoom: z.number().positive().default(4),
+  /** Fator de zoom (640×2 = 1280px no desktop) */
+  zoom: z.number().positive().default(GAME_ZOOM),
   /** Cor de fundo do canvas */
   backgroundColor: z.string().default('#0a0a1a'),
   /** Usar física Arcade */
@@ -68,7 +69,7 @@ export function createPhaserConfig(
       ? {
           default: 'arcade',
           arcade: {
-            gravity: { x: 0, y: 800 },
+            gravity: { x: 0, y: 800 * S },
             debug: false,
           },
         }

@@ -6,6 +6,7 @@
  * 🎮 Estilo MegaMan X — tela de resultado!
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../config/scaleConstants';
 
 export class StageClearScene extends Phaser.Scene {
   constructor() {
@@ -22,12 +23,12 @@ export class StageClearScene extends Phaser.Scene {
 
     // ─── "STAGE CLEAR!" ────────────────────────────────────────
     const clearText = this.add
-      .text(width / 2, height / 2 - 30, 'STAGE CLEAR!', {
+      .text(width / 2, height / 2 - 30 * S, 'STAGE CLEAR!', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '12px',
+        fontSize: fontSize(12),
         color: '#00ff88',
         stroke: '#003322',
-        strokeThickness: 3,
+        strokeThickness: 3 * S,
       })
       .setOrigin(0.5)
       .setAlpha(0);
@@ -36,11 +37,11 @@ export class StageClearScene extends Phaser.Scene {
     for (let i = 0; i < 20; i++) {
       const star = this.add
         .text(
-          Phaser.Math.Between(10, width - 10),
-          Phaser.Math.Between(10, height - 10),
+          Phaser.Math.Between(10 * S, width - 10 * S),
+          Phaser.Math.Between(10 * S, height - 10 * S),
           '✦',
           {
-            fontSize: `${Phaser.Math.Between(4, 8)}px`,
+            fontSize: `${Phaser.Math.Between(4 * S, 8 * S)}px`,
             color: '#ffdd44',
           }
         )
@@ -60,7 +61,7 @@ export class StageClearScene extends Phaser.Scene {
     this.tweens.add({
       targets: clearText,
       alpha: 1,
-      y: height / 2 - 35,
+      y: height / 2 - 35 * S,
       duration: 800,
       ease: 'Back.easeOut',
     });
@@ -69,7 +70,7 @@ export class StageClearScene extends Phaser.Scene {
     const subText = this.add
       .text(width / 2, height / 2, 'MISSION COMPLETE', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '6px',
+        fontSize: fontSize(6),
         color: '#88ccff',
       })
       .setOrigin(0.5)
@@ -84,9 +85,9 @@ export class StageClearScene extends Phaser.Scene {
 
     // ─── "PRESS START" piscando ───────────────────────────────
     const pressStart = this.add
-      .text(width / 2, height / 2 + 30, 'PRESS START', {
+      .text(width / 2, height / 2 + 30 * S, 'PRESS START', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '5px',
+        fontSize: fontSize(5),
         color: '#ffffff',
       })
       .setOrigin(0.5)

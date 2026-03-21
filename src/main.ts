@@ -11,6 +11,7 @@
  */
 import Phaser from 'phaser';
 import { createPhaserConfig } from './config/gameConfig';
+import { GAME_WIDTH, GAME_HEIGHT, GAME_ZOOM } from './config/scaleConstants';
 import { BootScene } from './scenes/BootScene';
 import { TitleScene } from './scenes/TitleScene';
 import { GameScene } from './scenes/GameScene';
@@ -30,10 +31,10 @@ document.head.appendChild(fontLink);
 const config = createPhaserConfig(
   [BootScene, TitleScene, GameScene, GameOverScene, StageClearScene, LabScene, MissionSelectScene],
   {
-    width: 320,
-    height: 180,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
     pixelArt: true,
-    zoom: 4,
+    zoom: GAME_ZOOM,
     backgroundColor: '#0a0a1a',
   }
 );

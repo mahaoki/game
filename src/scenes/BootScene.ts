@@ -7,6 +7,7 @@
  * 🎨 Mostra uma barra de progresso simples durante o carregamento.
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../config/scaleConstants';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -41,29 +42,29 @@ export class BootScene extends Phaser.Scene {
 
     // Texto "LOADING..."
     const loadingText = this.add
-      .text(centerX, centerY - 16, 'LOADING...', {
+      .text(centerX, centerY - 16 * S, 'LOADING...', {
         fontFamily: 'monospace',
-        fontSize: '8px',
+        fontSize: fontSize(8),
         color: '#ffffff',
       })
       .setOrigin(0.5);
 
     // Barra de fundo (cinza escuro)
-    const barBg = this.add.rectangle(centerX, centerY, 120, 8, 0x333333);
+    const barBg = this.add.rectangle(centerX, centerY, 120 * S, 8 * S, 0x333333);
 
     // Barra de progresso (azul MegaMan)
     const barFill = this.add.rectangle(
-      centerX - 60,
+      centerX - 60 * S,
       centerY,
       0,
-      8,
+      8 * S,
       0x00aaff
     );
     barFill.setOrigin(0, 0.5);
 
     // Atualiza a barra conforme os assets carregam
     this.load.on('progress', (value: number) => {
-      barFill.width = 120 * value;
+      barFill.width = 120 * S * value;
     });
 
     // Limpa quando terminar

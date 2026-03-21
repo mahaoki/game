@@ -11,6 +11,7 @@
  * 🎮 Usado nas cutscenes (Lab, etc.)
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../../config/scaleConstants';
 
 export interface DialogLine {
   speaker: string;
@@ -45,41 +46,41 @@ export class DialogBox {
     this.container = scene.add.container(0, 0).setScrollFactor(0).setDepth(1000);
 
     // ─── Background da caixa ──────────────────────────────────
-    const boxY = height - 52;
-    const boxH = 48;
+    const boxY = height - 52 * S;
+    const boxH = 48 * S;
     this.bg = scene.add.graphics();
     // Borda externa
     this.bg.fillStyle(0x112244, 0.95);
-    this.bg.fillRoundedRect(4, boxY, width - 8, boxH, 4);
+    this.bg.fillRoundedRect(4 * S, boxY, width - 8 * S, boxH, 4 * S);
     // Borda highlight
-    this.bg.lineStyle(1, 0x4488cc, 0.8);
-    this.bg.strokeRoundedRect(4, boxY, width - 8, boxH, 4);
+    this.bg.lineStyle(1 * S, 0x4488cc, 0.8);
+    this.bg.strokeRoundedRect(4 * S, boxY, width - 8 * S, boxH, 4 * S);
     this.container.add(this.bg);
 
     // ─── Nome do falante ──────────────────────────────────────
     this.nameText = scene.add
-      .text(52, boxY + 4, '', {
+      .text(52 * S, boxY + 4 * S, '', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '5px',
+        fontSize: fontSize(5),
         color: '#00ccff',
       });
     this.container.add(this.nameText);
 
     // ─── Texto do diálogo ─────────────────────────────────────
     this.bodyText = scene.add
-      .text(52, boxY + 15, '', {
+      .text(52 * S, boxY + 15 * S, '', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '4px',
+        fontSize: fontSize(4),
         color: '#ffffff',
-        wordWrap: { width: width - 64 },
-        lineSpacing: 4,
+        wordWrap: { width: width - 64 * S },
+        lineSpacing: 4 * S,
       });
     this.container.add(this.bodyText);
 
     // ─── Ícone de avançar ─────────────────────────────────────
     this.advanceIcon = scene.add
-      .text(width - 14, boxY + boxH - 10, '▼', {
-        fontSize: '5px',
+      .text(width - 14 * S, boxY + boxH - 10 * S, '▼', {
+        fontSize: fontSize(5),
         color: '#ffdd44',
       })
       .setAlpha(0);
@@ -138,10 +139,10 @@ export class DialogBox {
     }
     if (line.portrait) {
       const { height } = this.scene.scale;
-      const boxY = height - 52;
+      const boxY = height - 52 * S;
       this.portrait = this.scene.add
-        .image(28, boxY + 24, line.portrait)
-        .setDisplaySize(36, 36);
+        .image(28 * S, boxY + 24 * S, line.portrait)
+        .setDisplaySize(36 * S, 36 * S);
       this.container.add(this.portrait);
     }
 

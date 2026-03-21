@@ -12,6 +12,7 @@ import Phaser from 'phaser';
 import { createActor } from 'xstate';
 import { bossMachine } from '../core/machines/bossMachine';
 import { BossHealthBar } from '../ui/components/BossHealthBar';
+import { S } from '../config/scaleConstants';
 
 export class Boss extends Phaser.Physics.Arcade.Sprite {
   private bossActor;
@@ -45,10 +46,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
 
     // Configura body
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(48, 56);
-    body.setOffset(8, 8);
+    body.setSize(48 * S, 56 * S);
+    body.setOffset(8 * S, 8 * S);
     body.setCollideWorldBounds(false);
-    this.setDisplaySize(64, 64);
+    this.setDisplaySize(64 * S, 64 * S);
 
     // XState
     this.bossActor = createActor(bossMachine);
@@ -148,9 +149,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     const body = this.body as Phaser.Physics.Arcade.Body;
     const dx = this.playerRef.x - this.x;
     const phase = this.bossActor.getSnapshot().context.phase;
-    const speed = phase === 3 ? 120 : 80;
+    const speed = phase === 3 ? 120 * S : 80 * S;
 
-    body.setVelocityY(-200);
+    body.setVelocityY(-200 * S);
     body.setVelocityX(dx > 0 ? speed : -speed);
 
     // Esperar aterrissar
@@ -193,10 +194,10 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     this.play('boss_jump', true);
 
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setVelocityY(-250);
+    body.setVelocityY(-250 * S);
 
     this.scene.time.delayedCall(400, () => {
-      body.setVelocityY(300);
+      body.setVelocityY(300 * S);
       this.play('boss_attack', true);
     });
 
@@ -216,21 +217,21 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
   private spawnFireProjectile(angleDeg: number): void {
     const bullet = this.bulletGroup.get(
       this.x,
-      this.y - 8,
+      this.y - 8 * S,
       'fire_projectile'
     ) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
 
     bullet.setActive(true);
     bullet.setVisible(true);
-    bullet.setDisplaySize(12, 12);
+    bullet.setDisplaySize(12 * S, 12 * S);
 
     const body = bullet.body as Phaser.Physics.Arcade.Body;
     body.setAllowGravity(false);
 
     const rad = Phaser.Math.DegToRad(angleDeg);
     const dir = this.playerRef.x > this.x ? 1 : -1;
-    const speed = 120;
+    const speed = 120 * S;
     body.setVelocity(
       Math.cos(rad) * speed * dir,
       Math.sin(rad) * speed
@@ -283,9 +284,9 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
     // Explosões sequenciais
     for (let i = 0; i < 8; i++) {
       this.scene.time.delayedCall(i * 200, () => {
-        const ex = this.x + Phaser.Math.Between(-20, 20);
-        const ey = this.y + Phaser.Math.Between(-20, 20);
-        const exp = this.scene.add.circle(ex, ey, 6, 0xffaa00, 1);
+        const ex = this.x + Phaser.Math.Between(-20 * S, 20 * S);
+        const ey = this.y + Phaser.Math.Between(-20 * S, 20 * S);
+        const exp = this.scene.add.circle(ex, ey, 6 * S, 0xffaa00, 1);
         this.scene.tweens.add({
           targets: exp,
           alpha: 0,
@@ -301,9 +302,11 @@ export class Boss extends Phaser.Physics.Arcade.Sprite {
       this.bossActor.send({ type: 'DEATH_ANIM_DONE' });
       const dropX = this.x;
       const dropY = this.y;
+      const scene = this.scene; // Salvar referência antes do destroy
       this.healthBar.destroy();
+      this.bossActor.stop(); // Parar a máquina de estado
       this.destroy();
-      this.scene.events.emit('boss-defeated', dropX, dropY);
+      scene.events.emit('boss-defeated', dropX, dropY);
     });
   }
 

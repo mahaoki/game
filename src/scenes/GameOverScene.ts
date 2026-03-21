@@ -7,6 +7,7 @@
  * 🎮 Estilo MegaMan X: simples, direto, pixel art.
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../config/scaleConstants';
 
 export class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -26,12 +27,12 @@ export class GameOverScene extends Phaser.Scene {
 
     // "GAME OVER" em vermelho
     const gameOverText = this.add
-      .text(centerX, centerY - 20, 'GAME OVER', {
+      .text(centerX, centerY - 20 * S, 'GAME OVER', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '12px',
+        fontSize: fontSize(12),
         color: '#cc0000',
         stroke: '#440000',
-        strokeThickness: 2,
+        strokeThickness: 2 * S,
       })
       .setOrigin(0.5)
       .setAlpha(0);
@@ -40,16 +41,16 @@ export class GameOverScene extends Phaser.Scene {
     this.tweens.add({
       targets: gameOverText,
       alpha: 1,
-      y: centerY - 24,
+      y: centerY - 24 * S,
       duration: 1000,
       ease: 'Power2',
     });
 
     // "PRESS START" piscando (aparece após 1.5s)
     const promptText = this.add
-      .text(centerX, centerY + 16, 'PRESS START', {
+      .text(centerX, centerY + 16 * S, 'PRESS START', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '6px',
+        fontSize: fontSize(6),
         color: '#aaaaaa',
       })
       .setOrigin(0.5)

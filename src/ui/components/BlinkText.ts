@@ -7,6 +7,7 @@
  * 💡 Não depende de lógica de negócio — é um componente visual puro.
  */
 import Phaser from 'phaser';
+import { fontSize } from '../../config/scaleConstants';
 
 export interface BlinkTextConfig {
   /** Cena onde o texto será criado */
@@ -42,7 +43,7 @@ export function createBlinkText(config: BlinkTextConfig) {
   const textObject = scene.add
     .text(x, y, text, {
       fontFamily: '"Press Start 2P", monospace',
-      fontSize: '8px',
+      fontSize: fontSize(8),
       color: '#ffffff',
       ...style,
     })

@@ -11,6 +11,7 @@ import Phaser from 'phaser';
 import { createActor } from 'xstate';
 import { patrolMachine, turretMachine, flamerMachine, dropperMachine, type EnemyType } from '../core/machines/enemyMachine';
 import { getEnemyConfig, type EnemyConfig } from '../specs/enemyConfig';
+import { S } from '../config/scaleConstants';
 
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private enemyActor: ReturnType<typeof createActor<typeof patrolMachine>>;
@@ -58,8 +59,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 
     // Configurar física
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setSize(20, 24);
-    body.setOffset(6, 8);
+    body.setSize(20 * S, 24 * S);
+    body.setOffset(6 * S, 8 * S);
     this.setDisplaySize(this.config.spriteSize, this.config.spriteSize);
 
     if (type === 'turret') {
@@ -169,8 +170,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // Edge detection: verifica se há chão à frente
     const onFloor = body.blocked.down || body.touching.down;
     if (onFloor) {
-      const feelerX = this.x + dir * 16;
-      const feelerY = this.y + 20;
+      const feelerX = this.x + dir * 16 * S;
+      const feelerY = this.y + 20 * S;
 
       // Verifica se há plataforma abaixo do próximo passo
       let hasGround = false;
@@ -182,7 +183,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
             feelerX >= platBody.x &&
             feelerX <= platBody.x + platBody.width &&
             feelerY >= platBody.y &&
-            feelerY <= platBody.y + platBody.height + 8
+            feelerY <= platBody.y + platBody.height + 8 * S
           ) {
             hasGround = true;
           }
@@ -268,7 +269,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const dir = dx > 0 ? 1 : -1;
 
     const bullet = this.enemyBulletGroup.get(
-      this.x + dir * 12,
+      this.x + dir * 12 * S,
       this.y,
       'enemy_bullet'
     ) as Phaser.Physics.Arcade.Sprite;
@@ -276,7 +277,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (bullet) {
       bullet.setActive(true);
       bullet.setVisible(true);
-      bullet.setDisplaySize(8, 8);
+      bullet.setDisplaySize(8 * S, 8 * S);
       const bulletBody = bullet.body as Phaser.Physics.Arcade.Body;
       bulletBody.setAllowGravity(false);
       bulletBody.setVelocityX(dir * this.config.turretBulletSpeed);
@@ -367,13 +368,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         if (this.enemyBulletGroup && this.playerRef) {
           const dir = this.playerRef.x > this.x ? 1 : -1;
           const bullet = this.enemyBulletGroup.get(
-            this.x + dir * 12, this.y, 'fire_projectile'
+            this.x + dir * 12 * S, this.y, 'fire_projectile'
           ) as Phaser.Physics.Arcade.Sprite;
           if (bullet) {
-            bullet.setActive(true).setVisible(true).setDisplaySize(10, 10);
+            bullet.setActive(true).setVisible(true).setDisplaySize(10 * S, 10 * S);
             const bBody = bullet.body as Phaser.Physics.Arcade.Body;
             bBody.setAllowGravity(false);
-            bBody.setVelocityX(dir * 100);
+            bBody.setVelocityX(dir * 100 * S);
             this.scene.time.delayedCall(2000, () => {
               if (bullet.active) {
                 bullet.setActive(false).setVisible(false);
@@ -415,7 +416,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       // Detecta player
       if (this.playerRef) {
         const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
-        if (dist < 100) {
+        if (dist < 100 * S) {
           this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
         }
       }
@@ -426,7 +427,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       if (this.playerRef) {
         this.setFlipX(this.playerRef.x > this.x);
         const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
-        if (dist > 120) {
+        if (dist > 120 * S) {
           this.enemyActor.send({ type: 'PLAYER_OUT_OF_RANGE' });
         }
       }
@@ -439,15 +440,15 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private checkEdge(): void {
     if (!this.platformsRef) return;
     const ctx = this.enemyActor.getSnapshot().context;
-    const checkX = ctx.facing === 'left' ? this.x - 16 : this.x + 16;
-    const checkY = this.y + 16;
+    const checkX = ctx.facing === 'left' ? this.x - 16 * S : this.x + 16 * S;
+    const checkY = this.y + 16 * S;
     let hasGround = false;
     this.platformsRef.getChildren().forEach((plat) => {
       const p = plat as Phaser.Physics.Arcade.Sprite;
       const pBody = p.body as Phaser.Physics.Arcade.StaticBody;
       if (
         checkX >= pBody.x && checkX <= pBody.x + pBody.width &&
-        Math.abs(checkY - pBody.y) < 20
+        Math.abs(checkY - pBody.y) < 20 * S
       ) {
         hasGround = true;
       }
@@ -470,7 +471,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       if (this.playerRef) {
         const dx = Math.abs(this.playerRef.x - this.x);
         const dy = this.playerRef.y - this.y;
-        if (dx < 24 && dy > 0 && dy < 120) {
+        if (dx < 24 * S && dy > 0 && dy < 120 * S) {
           this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
           // Ativa gravidade para cair
           const body = this.body as Phaser.Physics.Arcade.Body;

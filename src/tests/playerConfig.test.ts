@@ -8,30 +8,31 @@
 import { describe, it, expect } from 'vitest';
 import { PlayerConfigSchema, getPlayerConfig } from '../specs/playerConfig';
 import { LevelConfigSchema, getLevel1Config } from '../specs/levelConfig';
+import { S } from '../config/scaleConstants';
 
 describe('PlayerConfigSchema', () => {
   it('deve gerar valores default corretos', () => {
     const config = PlayerConfigSchema.parse({});
 
-    expect(config.moveSpeed).toBe(120);
-    expect(config.jumpForce).toBe(-280);
-    expect(config.dashSpeed).toBe(250);
+    expect(config.moveSpeed).toBe(120 * S);
+    expect(config.jumpForce).toBe(-280 * S);
+    expect(config.dashSpeed).toBe(250 * S);
     expect(config.dashDurationMs).toBe(250);
     expect(config.dashCooldownMs).toBe(500);
     expect(config.maxHealth).toBe(16);
-    expect(config.bulletSpeed).toBe(300);
+    expect(config.bulletSpeed).toBe(300 * S);
     expect(config.bulletCooldownMs).toBe(200);
     expect(config.maxBullets).toBe(3);
-    expect(config.spriteWidth).toBe(32);
-    expect(config.spriteHeight).toBe(32);
-    expect(config.hitboxWidth).toBe(16);
-    expect(config.hitboxHeight).toBe(24);
+    expect(config.spriteWidth).toBe(32 * S);
+    expect(config.spriteHeight).toBe(32 * S);
+    expect(config.hitboxWidth).toBe(16 * S);
+    expect(config.hitboxHeight).toBe(24 * S);
   });
 
   it('deve aceitar overrides parciais', () => {
     const config = PlayerConfigSchema.parse({ moveSpeed: 200 });
     expect(config.moveSpeed).toBe(200);
-    expect(config.jumpForce).toBe(-280); // Mantém default
+    expect(config.jumpForce).toBe(-280 * S); // Mantém default
   });
 
   it('deve rejeitar moveSpeed negativo', () => {
@@ -54,23 +55,23 @@ describe('PlayerConfigSchema', () => {
 describe('getPlayerConfig', () => {
   it('deve retornar config padrão sem argumentos', () => {
     const config = getPlayerConfig();
-    expect(config.moveSpeed).toBe(120);
+    expect(config.moveSpeed).toBe(120 * S);
   });
 
   it('deve mesclar overrides', () => {
     const config = getPlayerConfig({ dashSpeed: 300 });
     expect(config.dashSpeed).toBe(300);
-    expect(config.moveSpeed).toBe(120);
+    expect(config.moveSpeed).toBe(120 * S);
   });
 });
 
 describe('LevelConfigSchema', () => {
   it('deve gerar valores default corretos', () => {
     const config = LevelConfigSchema.parse({});
-    expect(config.worldWidth).toBe(640);
-    expect(config.worldHeight).toBe(180);
-    expect(config.spawnPoint.x).toBe(40);
-    expect(config.spawnPoint.y).toBe(140);
+    expect(config.worldWidth).toBe(640 * S);
+    expect(config.worldHeight).toBe(180 * S);
+    expect(config.spawnPoint.x).toBe(40 * S);
+    expect(config.spawnPoint.y).toBe(140 * S);
     expect(config.platforms).toEqual([]);
   });
 

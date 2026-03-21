@@ -20,15 +20,16 @@ vi.mock('phaser', () => ({
 
 import { GameConfigSchema } from '../config/gameConfig';
 import { TitleScreenConfigSchema, getTitleScreenConfig } from '../specs/titleScreen.spec';
+import { S } from '../config/scaleConstants';
 
 describe('GameConfigSchema', () => {
   it('deve gerar valores default corretos', () => {
     const config = GameConfigSchema.parse({});
 
-    expect(config.width).toBe(320);
-    expect(config.height).toBe(180);
+    expect(config.width).toBe(320 * S);
+    expect(config.height).toBe(180 * S);
     expect(config.pixelArt).toBe(true);
-    expect(config.zoom).toBe(4);
+    expect(config.zoom).toBe(4 / S);
     expect(config.backgroundColor).toBe('#0a0a1a');
     expect(config.enablePhysics).toBe(true);
   });
@@ -37,7 +38,7 @@ describe('GameConfigSchema', () => {
     const config = GameConfigSchema.parse({ zoom: 2 });
 
     expect(config.zoom).toBe(2);
-    expect(config.width).toBe(320); // Mantém default
+    expect(config.width).toBe(320 * S); // Mantém default
   });
 
   it('deve rejeitar width negativo', () => {

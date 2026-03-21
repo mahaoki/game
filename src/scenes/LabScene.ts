@@ -9,6 +9,7 @@
  */
 import Phaser from 'phaser';
 import { DialogBox, type DialogLine } from '../ui/components/DialogBox';
+import { S } from '../config/scaleConstants';
 
 export class LabScene extends Phaser.Scene {
   private dialog!: DialogBox;
@@ -27,13 +28,13 @@ export class LabScene extends Phaser.Scene {
 
     // ─── Plataforma de teleporte ──────────────────────────────
     const telepadX = width * 0.35;
-    const telepadY = height - 20;
+    const telepadY = height - 20 * S;
     this.createTelepad(telepadX, telepadY);
 
     // ─── Dr. White (direita) ──────────────────────────────────
     const drWhite = this.add
-      .sprite(width * 0.65, telepadY - 16, 'drwhite_sheet', 0)
-      .setDisplaySize(32, 32);
+      .sprite(width * 0.65, telepadY - 16 * S, 'drwhite_sheet', 0)
+      .setDisplaySize(32 * S, 32 * S);
 
     // Animação idle/talk
     if (!this.anims.exists('drwhite_idle')) {
@@ -56,8 +57,8 @@ export class LabScene extends Phaser.Scene {
 
     // ─── Mega Pixel (teleporte in) ────────────────────────────
     const player = this.add
-      .sprite(telepadX, telepadY - 16, 'player_sheet', 0)
-      .setDisplaySize(32, 32)
+      .sprite(telepadX, telepadY - 16 * S, 'player_sheet', 0)
+      .setDisplaySize(32 * S, 32 * S)
       .setAlpha(0);
 
     // Aplica tint vermelho se voltou de Vulcan (já tem fire power)
@@ -69,7 +70,7 @@ export class LabScene extends Phaser.Scene {
     // Flash na plataforma
     const teleFlash = this.add.graphics();
     teleFlash.fillStyle(0x00ffcc, 0.8);
-    teleFlash.fillRect(telepadX - 8, telepadY - 40, 16, 40);
+    teleFlash.fillRect(telepadX - 8 * S, telepadY - 40 * S, 16 * S, 40 * S);
     teleFlash.setAlpha(0);
 
     // Sequência de animação
@@ -110,43 +111,43 @@ export class LabScene extends Phaser.Scene {
     bg.fillRect(0, 0, width, height);
 
     // Painéis da parede
-    for (let x = 8; x < width - 8; x += 40) {
+    for (let x = 8 * S; x < width - 8 * S; x += 40 * S) {
       bg.fillStyle(0x222844, 1);
-      bg.fillRect(x, 10, 36, height - 30);
+      bg.fillRect(x, 10 * S, 36 * S, height - 30 * S);
       bg.lineStyle(1, 0x334466, 0.5);
-      bg.strokeRect(x, 10, 36, height - 30);
+      bg.strokeRect(x, 10 * S, 36 * S, height - 30 * S);
     }
 
     // Telas/monitores na parede
-    const screenPositions = [20, 100, 200, 280];
+    const screenPositions = [20 * S, 100 * S, 200 * S, 280 * S];
     for (const sx of screenPositions) {
-      if (sx > width - 40) continue;
+      if (sx > width - 40 * S) continue;
       // Moldura do monitor
       bg.fillStyle(0x111122, 1);
-      bg.fillRect(sx, 20, 28, 20);
+      bg.fillRect(sx, 20 * S, 28 * S, 20 * S);
       // Tela verde
       bg.fillStyle(0x003322, 1);
-      bg.fillRect(sx + 2, 22, 24, 16);
+      bg.fillRect(sx + 2 * S, 22 * S, 24 * S, 16 * S);
       // Linhas de dados
-      for (let ly = 24; ly < 36; ly += 4) {
+      for (let ly = 24 * S; ly < 36 * S; ly += 4 * S) {
         bg.fillStyle(0x00cc66, 0.6);
-        const lineW = Phaser.Math.Between(8, 20);
-        bg.fillRect(sx + 4, ly, lineW, 1);
+        const lineW = Phaser.Math.Between(8 * S, 20 * S);
+        bg.fillRect(sx + 4 * S, ly, lineW, S);
       }
     }
 
     // Chão metálico
     bg.fillStyle(0x334455, 1);
-    bg.fillRect(0, height - 16, width, 16);
+    bg.fillRect(0, height - 16 * S, width, 16 * S);
     bg.lineStyle(1, 0x556677, 0.5);
-    for (let x = 0; x < width; x += 16) {
-      bg.strokeRect(x, height - 16, 16, 16);
+    for (let x = 0; x < width; x += 16 * S) {
+      bg.strokeRect(x, height - 16 * S, 16 * S, 16 * S);
     }
 
     // Luzes no teto
-    for (let x = 20; x < width; x += 60) {
+    for (let x = 20 * S; x < width; x += 60 * S) {
       bg.fillStyle(0xffffcc, 0.3);
-      bg.fillRect(x, 8, 20, 2);
+      bg.fillRect(x, 8 * S, 20 * S, 2 * S);
     }
   }
 
@@ -155,18 +156,18 @@ export class LabScene extends Phaser.Scene {
     const pad = this.add.graphics();
     // Base circular
     pad.fillStyle(0x224466, 1);
-    pad.fillEllipse(x, y - 2, 40, 8);
+    pad.fillEllipse(x, y - 2 * S, 40 * S, 8 * S);
     // Anel de energia
-    pad.lineStyle(1, 0x00ccff, 0.8);
-    pad.strokeEllipse(x, y - 2, 40, 8);
+    pad.lineStyle(S, 0x00ccff, 0.8);
+    pad.strokeEllipse(x, y - 2 * S, 40 * S, 8 * S);
     // Brilho
     pad.fillStyle(0x00ccff, 0.2);
-    pad.fillEllipse(x, y - 2, 30, 5);
+    pad.fillEllipse(x, y - 2 * S, 30 * S, 5 * S);
 
     // Glow pulsante
     const glow = this.add.graphics();
     glow.fillStyle(0x00ccff, 0.1);
-    glow.fillEllipse(x, y - 2, 44, 10);
+    glow.fillEllipse(x, y - 2 * S, 44 * S, 10 * S);
     this.tweens.add({
       targets: glow,
       alpha: { from: 0.2, to: 0.6 },

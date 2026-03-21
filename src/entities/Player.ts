@@ -24,6 +24,7 @@ import { createActor } from 'xstate';
 import { playerMachine } from '../core/machines/playerMachine';
 import { getPlayerConfig, type PlayerConfig } from '../specs/playerConfig';
 import { type PlayerInput } from '../core/InputManager';
+import { S, fontSize } from '../config/scaleConstants';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   /** Ator XState que gerencia os estados */
@@ -300,8 +301,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Cria o projétil
     const direction = context.facing === 'right' ? 1 : -1;
-    const bulletX = this.x + direction * 16;
-    const bulletY = this.y - 2;
+    const bulletX = this.x + direction * 16 * S;
+    const bulletY = this.y - 2 * S;
 
     const useFire = this.currentWeapon === 'fire';
     const bullet = this.bulletGroup.get(bulletX, bulletY,
@@ -310,7 +311,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (bullet) {
       bullet.setActive(true);
       bullet.setVisible(true);
-      bullet.setDisplaySize(useFire ? 10 : 8, useFire ? 10 : 6);
+      bullet.setDisplaySize(useFire ? 10 * S : 8 * S, useFire ? 10 * S : 6 * S);
       if (useFire) {
         bullet.setTint(0xff6600);
         bullet.setData('damage', 2);
@@ -445,14 +446,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const color = this.currentWeapon === 'fire' ? '#ff4400' : '#00ccff';
 
     this.weaponIndicator = this.scene.add.text(
-      this.scene.scale.width - 4, 4,
+      this.scene.scale.width - 4 * S, 4 * S,
       label,
       {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '3px',
+        fontSize: fontSize(3),
         color,
         stroke: '#000000',
-        strokeThickness: 1,
+        strokeThickness: 1 * S,
       }
     ).setOrigin(1, 0).setScrollFactor(0).setDepth(900);
   }

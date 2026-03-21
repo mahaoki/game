@@ -5,6 +5,7 @@
  * Validação com Zod garante que os textos e timings estão corretos.
  */
 import { z } from 'zod';
+import { S } from '../config/scaleConstants';
 
 /** Schema de configuração da animação de entrada */
 const TitleAnimationSchema = z.object({
@@ -13,9 +14,9 @@ const TitleAnimationSchema = z.object({
   /** Easing da animação do logo */
   logoEasing: z.string().default('Bounce.easeOut'),
   /** Posição Y de onde o logo começa (fora da tela) */
-  logoStartY: z.number().default(-50),
+  logoStartY: z.number().default(-50 * S),
   /** Posição Y final do logo */
-  logoEndY: z.number().default(50),
+  logoEndY: z.number().default(50 * S),
   /** Intervalo de piscar do "Press Start" (ms) */
   blinkIntervalMs: z.number().positive().default(500),
   /** Duração do fade-out ao iniciar (ms) */

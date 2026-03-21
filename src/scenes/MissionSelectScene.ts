@@ -7,6 +7,7 @@
  * 🎮 Estilo MegaMan X — Stage Select!
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../config/scaleConstants';
 
 interface MissionData {
   name: string;
@@ -45,31 +46,31 @@ export class MissionSelectScene extends Phaser.Scene {
 
     // Grid pattern
     bg.lineStyle(1, 0x111133, 0.3);
-    for (let x = 0; x < width; x += 16) {
+    for (let x = 0; x < width; x += 16 * S) {
       bg.lineBetween(x, 0, x, height);
     }
-    for (let y = 0; y < height; y += 16) {
+    for (let y = 0; y < height; y += 16 * S) {
       bg.lineBetween(0, y, width, y);
     }
 
     // ─── Título ───────────────────────────────────────────────
     this.add
-      .text(width / 2, 16, 'SELECT MISSION', {
+      .text(width / 2, 16 * S, 'SELECT MISSION', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '8px',
+        fontSize: fontSize(8),
         color: '#00ccff',
         stroke: '#001133',
-        strokeThickness: 2,
+        strokeThickness: 2 * S,
       })
       .setOrigin(0.5);
 
     // ─── Grid 2×2 ─────────────────────────────────────────────
-    const cardW = 120;
-    const cardH = 50;
-    const gapX = 16;
-    const gapY = 12;
+    const cardW = 120 * S;
+    const cardH = 50 * S;
+    const gapX = 16 * S;
+    const gapY = 12 * S;
     const gridX = (width - cardW * 2 - gapX) / 2;
-    const gridY = 36;
+    const gridY = 36 * S;
 
     for (let i = 0; i < MISSIONS.length; i++) {
       const col = i % 2;
@@ -95,9 +96,9 @@ export class MissionSelectScene extends Phaser.Scene {
 
     // ─── Instrução ────────────────────────────────────────────
     this.add
-      .text(width / 2, height - 14, '← → ↑ ↓  NAVIGATE    ENTER  SELECT', {
+      .text(width / 2, height - 14 * S, '← → ↑ ↓  NAVIGATE    ENTER  SELECT', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '3px',
+        fontSize: fontSize(3),
         color: '#556688',
       })
       .setOrigin(0.5);
@@ -128,26 +129,26 @@ export class MissionSelectScene extends Phaser.Scene {
     // Background do card
     const cardBg = this.add.graphics();
     cardBg.fillStyle(0x111122, 0.9);
-    cardBg.fillRoundedRect(-w / 2, -h / 2, w, h, 3);
+    cardBg.fillRoundedRect(-w / 2, -h / 2, w, h, 3 * S);
     // Barra de cor no topo
     cardBg.fillStyle(mission.color, 0.8);
-    cardBg.fillRect(-w / 2, -h / 2, w, 4);
+    cardBg.fillRect(-w / 2, -h / 2, w, 4 * S);
     // Borda
     cardBg.lineStyle(1, mission.color, 0.5);
-    cardBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 3);
+    cardBg.strokeRoundedRect(-w / 2, -h / 2, w, h, 3 * S);
     container.add(cardBg);
 
     // Ícone
     const icon = this.add
-      .text(-w / 2 + 10, -6, mission.icon, { fontSize: '12px' })
+      .text(-w / 2 + 10 * S, -6 * S, mission.icon, { fontSize: fontSize(12) })
       .setOrigin(0, 0.5);
     container.add(icon);
 
     // Nome da missão
     const nameText = this.add
-      .text(6, -10, mission.name, {
+      .text(6 * S, -10 * S, mission.name, {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '5px',
+        fontSize: fontSize(5),
         color: '#ffffff',
       })
       .setOrigin(0, 0.5);
@@ -155,9 +156,9 @@ export class MissionSelectScene extends Phaser.Scene {
 
     // Subtítulo
     const subText = this.add
-      .text(6, 4, mission.subtitle, {
+      .text(6 * S, 4 * S, mission.subtitle, {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '3px',
+        fontSize: fontSize(3),
         color: '#88aacc',
       })
       .setOrigin(0, 0.5);
@@ -165,9 +166,9 @@ export class MissionSelectScene extends Phaser.Scene {
 
     // Status
     const status = this.add
-      .text(w / 2 - 8, h / 2 - 8, 'READY', {
+      .text(w / 2 - 8 * S, h / 2 - 8 * S, 'READY', {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '3px',
+        fontSize: fontSize(3),
         color: '#00ff66',
       })
       .setOrigin(1, 1);
@@ -182,15 +183,15 @@ export class MissionSelectScene extends Phaser.Scene {
     const card = this.missionCards[this.selectedIndex];
     if (!card) return;
 
-    const w = 124;
-    const h = 54;
-    this.selectorGlow.lineStyle(2, 0x00ffcc, 1);
+    const w = 124 * S;
+    const h = 54 * S;
+    this.selectorGlow.lineStyle(2 * S, 0x00ffcc, 1);
     this.selectorGlow.strokeRoundedRect(
       card.x - w / 2,
       card.y - h / 2,
       w,
       h,
-      4
+      4 * S
     );
   }
 
@@ -237,7 +238,7 @@ export class MissionSelectScene extends Phaser.Scene {
     // Flash de seleção
     const flash = this.add.graphics().setDepth(600);
     flash.fillStyle(mission.color, 0.4);
-    flash.fillRoundedRect(card.x - 62, card.y - 27, 124, 54, 4);
+    flash.fillRoundedRect(card.x - 62 * S, card.y - 27 * S, 124 * S, 54 * S, 4 * S);
 
     this.tweens.add({
       targets: flash,

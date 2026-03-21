@@ -13,6 +13,7 @@ import { createActor } from 'xstate';
 import { menuMachine } from '../core/machines/menuMachine';
 import { getTitleScreenConfig } from '../specs/titleScreen.spec';
 import { createBlinkText } from '../ui/components/BlinkText';
+import { S, fontSize } from '../config/scaleConstants';
 
 export class TitleScene extends Phaser.Scene {
   /** Ator XState que controla o fluxo de estados */
@@ -89,11 +90,11 @@ export class TitleScene extends Phaser.Scene {
     const starCount = 25;
     for (let i = 0; i < starCount; i++) {
       const sx = Phaser.Math.Between(0, width);
-      const sy = Phaser.Math.Between(0, height - 30);
+      const sy = Phaser.Math.Between(0, height - 30 * S);
       const brightness = Phaser.Math.Between(150, 255);
       const starColor = (brightness << 16) | (brightness << 8) | brightness;
       graphics.fillStyle(starColor, Phaser.Math.FloatBetween(0.3, 1.0));
-      graphics.fillRect(sx, sy, 1, 1);
+      graphics.fillRect(sx, sy, S, S);
     }
   }
 
@@ -107,9 +108,9 @@ export class TitleScene extends Phaser.Scene {
     if (this.textures.exists('logo')) {
       logo = this.add.image(width / 2, animation.logoStartY, 'logo');
       logo.setOrigin(0.5);
-      // Escala o logo para caber na tela (max 160px de largura)
-      const maxLogoWidth = 160;
-      const maxLogoHeight = 80;
+      // Escala o logo para caber na tela
+      const maxLogoWidth = 160 * S;
+      const maxLogoHeight = 80 * S;
       const logoFrame = this.textures.getFrame('logo');
       const scaleX = maxLogoWidth / logoFrame.width;
       const scaleY = maxLogoHeight / logoFrame.height;
@@ -120,11 +121,11 @@ export class TitleScene extends Phaser.Scene {
       logo = this.add
         .text(width / 2, animation.logoStartY, 'MEGA\nPIXEL', {
           fontFamily: 'monospace',
-          fontSize: '16px',
+          fontSize: fontSize(16),
           color: '#00ccff',
           align: 'center',
           stroke: '#003366',
-          strokeThickness: 2,
+          strokeThickness: 2 * S,
         })
         .setOrigin(0.5);
     }
@@ -155,17 +156,17 @@ export class TitleScene extends Phaser.Scene {
     if (!this.textures.exists('star_particle')) {
       const particleGraphics = this.make.graphics({ x: 0, y: 0 });
       particleGraphics.fillStyle(0xffffff, 1);
-      particleGraphics.fillRect(0, 0, 1, 1);
-      particleGraphics.generateTexture('star_particle', 1, 1);
+      particleGraphics.fillRect(0, 0, S, S);
+      particleGraphics.generateTexture('star_particle', S, S);
       particleGraphics.destroy();
     }
 
     // Emitter de partículas — estrelas caindo lentamente
     this.add.particles(0, 0, 'star_particle', {
       x: { min: 0, max: width },
-      y: -2,
+      y: -2 * S,
       lifespan: 6000,
-      speedY: { min: 3, max: 8 },
+      speedY: { min: 3 * S, max: 8 * S },
       scale: { min: 0.5, max: 1.5 },
       alpha: { start: 0.8, end: 0 },
       frequency: 500,
@@ -173,7 +174,7 @@ export class TitleScene extends Phaser.Scene {
       blendMode: 'ADD',
       emitZone: {
         type: 'random',
-        source: new Phaser.Geom.Rectangle(0, 0, width, 1),
+        source: new Phaser.Geom.Rectangle(0, 0, width, S),
         quantity: 1,
       },
     });
@@ -187,11 +188,11 @@ export class TitleScene extends Phaser.Scene {
     this.blinkTextRef = createBlinkText({
       scene: this,
       x: width / 2,
-      y: height - 30,
+      y: height - 30 * S,
       text: config.startText,
       style: {
         color: config.textColor,
-        fontSize: '6px',
+        fontSize: fontSize(6),
       },
       blinkInterval: config.animation.blinkIntervalMs,
     });
@@ -241,9 +242,9 @@ export class TitleScene extends Phaser.Scene {
     const { width, height } = this.scale;
 
     this.add
-      .text(width - 4, height - 4, config.versionText, {
+      .text(width - 4 * S, height - 4 * S, config.versionText, {
         fontFamily: 'monospace',
-        fontSize: '4px',
+        fontSize: fontSize(4),
         color: config.versionColor,
       })
       .setOrigin(1, 1);

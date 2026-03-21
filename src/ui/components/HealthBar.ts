@@ -10,6 +10,7 @@
  *    - Animação ao perder vida
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../../config/scaleConstants';
 
 export interface HealthBarConfig {
   /** Cena Phaser */
@@ -43,12 +44,12 @@ export class HealthBar {
     this.scene = config.scene;
     this.maxHealth = config.maxHealth;
     this.currentHealth = config.maxHealth;
-    this.segmentWidth = config.segmentWidth ?? 6;
-    this.segmentHeight = config.segmentHeight ?? 3;
-    this.gap = config.gap ?? 1;
+    this.segmentWidth = config.segmentWidth ?? 6 * S;
+    this.segmentHeight = config.segmentHeight ?? 3 * S;
+    this.gap = config.gap ?? 1 * S;
 
-    const x = config.x ?? 8;
-    const y = config.y ?? 20;
+    const x = config.x ?? 8 * S;
+    const y = config.y ?? 20 * S;
 
     // Container fixo na câmera (HUD)
     this.container = this.scene.add.container(x, y);
@@ -64,8 +65,8 @@ export class HealthBar {
       this.maxHealth * (this.segmentHeight + this.gap) - this.gap;
 
     // Fundo da barra (moldura)
-    const bgWidth = this.segmentWidth + 4;
-    const bgHeight = totalHeight + 4;
+    const bgWidth = this.segmentWidth + 4 * S;
+    const bgHeight = totalHeight + 4 * S;
     const bg = this.scene.add.rectangle(
       this.segmentWidth / 2,
       totalHeight / 2,
@@ -74,14 +75,14 @@ export class HealthBar {
       0x111122,
       0.9
     );
-    bg.setStrokeStyle(1, 0x334466);
+    bg.setStrokeStyle(1 * S, 0x334466);
     this.container.add(bg);
 
     // Ícone "HP" no topo
     const hpText = this.scene.add
-      .text(this.segmentWidth / 2, -8, 'HP', {
+      .text(this.segmentWidth / 2, -8 * S, 'HP', {
         fontFamily: 'monospace',
-        fontSize: '4px',
+        fontSize: fontSize(4),
         color: '#00ccff',
       })
       .setOrigin(0.5);

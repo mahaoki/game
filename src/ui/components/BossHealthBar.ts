@@ -7,6 +7,7 @@
  * 🎮 Estilo MegaMan X boss HP bar!
  */
 import Phaser from 'phaser';
+import { S, fontSize } from '../../config/scaleConstants';
 
 export class BossHealthBar {
   private scene: Phaser.Scene;
@@ -15,8 +16,8 @@ export class BossHealthBar {
   private barFill: Phaser.GameObjects.Graphics;
   private nameText: Phaser.GameObjects.Text;
   private maxHealth: number;
-  private barWidth: number = 200;
-  private barHeight: number = 6;
+  private barWidth: number = 200 * S;
+  private barHeight: number = 6 * S;
 
   constructor(scene: Phaser.Scene, bossName: string, maxHealth: number) {
     this.scene = scene;
@@ -24,18 +25,18 @@ export class BossHealthBar {
 
     const { width } = scene.scale;
     const barX = (width - this.barWidth) / 2;
-    const barY = 8;
+    const barY = 8 * S;
 
     this.container = scene.add.container(0, 0).setScrollFactor(0).setDepth(900);
 
     // Nome do boss
     this.nameText = scene.add
-      .text(width / 2, barY - 2, bossName, {
+      .text(width / 2, barY - 2 * S, bossName, {
         fontFamily: '"Press Start 2P", monospace',
-        fontSize: '4px',
+        fontSize: fontSize(4),
         color: '#ff4444',
         stroke: '#000000',
-        strokeThickness: 1,
+        strokeThickness: 1 * S,
       })
       .setOrigin(0.5, 1);
     this.container.add(this.nameText);
@@ -44,7 +45,7 @@ export class BossHealthBar {
     this.barBg = scene.add.graphics();
     this.barBg.fillStyle(0x111111, 0.8);
     this.barBg.fillRect(barX, barY, this.barWidth, this.barHeight);
-    this.barBg.lineStyle(1, 0x444444, 1);
+    this.barBg.lineStyle(1 * S, 0x444444, 1);
     this.barBg.strokeRect(barX, barY, this.barWidth, this.barHeight);
     this.container.add(this.barBg);
 
@@ -66,7 +67,7 @@ export class BossHealthBar {
   update(currentHealth: number): void {
     const { width } = this.scene.scale;
     const barX = (width - this.barWidth) / 2;
-    const barY = 8;
+    const barY = 8 * S;
     const pct = Math.max(0, currentHealth / this.maxHealth);
     const fillW = Math.floor(this.barWidth * pct);
 
@@ -78,7 +79,7 @@ export class BossHealthBar {
 
     this.barFill.clear();
     this.barFill.fillStyle(color, 1);
-    this.barFill.fillRect(barX + 1, barY + 1, fillW - 2, this.barHeight - 2);
+    this.barFill.fillRect(barX + 1 * S, barY + 1 * S, fillW - 2 * S, this.barHeight - 2 * S);
   }
 
   destroy(): void {
