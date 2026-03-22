@@ -11,13 +11,17 @@
  *   - Gerenciar tiro (criar Bullets)
  *   - Gerenciar dano (knockback, i-frames, morte)
  *
- * 🎮 Spritesheet: player_sheet.png (8 frames de 32×32)
- *    Frame 0-1: Idle (breathing)
- *    Frame 2-3: Run cycle
- *    Frame 4:   Jump (ascending)
- *    Frame 5:   Fall (descending)
- *    Frame 6:   Shoot (buster extended)
- *    Frame 7:   Dash (leaning forward)
+ * 🎮 Spritesheet: player_sheet.png (16 frames de 64×64)
+ *    Frame 0-1:   Idle (breathing)
+ *    Frame 2-5:   Run cycle (4 frames)
+ *    Frame 6:     Jump (ascending)
+ *    Frame 7:     Fall (descending)
+ *    Frame 8-9:   Shoot (buster + flash)
+ *    Frame 10-11: Dash (lean + recovery)
+ *    Frame 12:    Crouch
+ *    Frame 13:    Hurt
+ *    Frame 14:    Wall slide
+ *    Frame 15:    Victory
  */
 import Phaser from 'phaser';
 import { createActor } from 'xstate';
@@ -105,61 +109,37 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /**
-   * Cria as animações usando frames do spritesheet real.
+   * Cria as animações usando frames do spritesheet 64×64 (16 frames).
    */
   private createAnimations(): void {
-    // Idle: alterna entre frame 0 e 1
+    // Idle: alterna entre frame 0 e 1 (respiração suave)
     if (!this.scene.anims.exists('player_idle')) {
       this.scene.anims.create({
         key: 'player_idle',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
           frames: [0, 1],
         }),
-        frameRate: 2,
+        frameRate: 3,
         repeat: -1,
       });
     }
 
-    // Run: ciclo de corrida (frames 2 e 3)
+    // Run: ciclo de 4 frames para movimento fluido
     if (!this.scene.anims.exists('player_run')) {
       this.scene.anims.create({
         key: 'player_run',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
-          frames: [2, 3, 2, 3],
+          frames: [2, 3, 4, 5],
         }),
-        frameRate: 8,
+        frameRate: 10,
         repeat: -1,
       });
     }
 
-    // Jump: frame 4 (ascending)
+    // Jump: frame 6 (ascending, joelhos dobrados)
     if (!this.scene.anims.exists('player_jump')) {
       this.scene.anims.create({
         key: 'player_jump',
-        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
-          frames: [4],
-        }),
-        frameRate: 1,
-        repeat: 0,
-      });
-    }
-
-    // Fall: frame 5 (descending)
-    if (!this.scene.anims.exists('player_fall')) {
-      this.scene.anims.create({
-        key: 'player_fall',
-        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
-          frames: [5],
-        }),
-        frameRate: 1,
-        repeat: 0,
-      });
-    }
-
-    // Shoot: frame 6 (arm cannon extended)
-    if (!this.scene.anims.exists('player_shoot')) {
-      this.scene.anims.create({
-        key: 'player_shoot',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
           frames: [6],
         }),
@@ -168,10 +148,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    // Dash: frame 7 (leaning forward)
-    if (!this.scene.anims.exists('player_dash')) {
+    // Fall: frame 7 (descending, braços estendidos)
+    if (!this.scene.anims.exists('player_fall')) {
       this.scene.anims.create({
-        key: 'player_dash',
+        key: 'player_fall',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
           frames: [7],
         }),
@@ -180,12 +160,48 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    // Hurt: pisca entre frame 0 e nenhum (usa idle frame + tint)
+    // Shoot: 2 frames (arm cannon + flash)
+    if (!this.scene.anims.exists('player_shoot')) {
+      this.scene.anims.create({
+        key: 'player_shoot',
+        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
+          frames: [8, 9],
+        }),
+        frameRate: 6,
+        repeat: 0,
+      });
+    }
+
+    // Dash: 2 frames (inclinado + recuperação)
+    if (!this.scene.anims.exists('player_dash')) {
+      this.scene.anims.create({
+        key: 'player_dash',
+        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
+          frames: [10, 11],
+        }),
+        frameRate: 8,
+        repeat: 0,
+      });
+    }
+
+    // Crouch: frame 12
+    if (!this.scene.anims.exists('player_crouch')) {
+      this.scene.anims.create({
+        key: 'player_crouch',
+        frames: this.scene.anims.generateFrameNumbers('player_sheet', {
+          frames: [12],
+        }),
+        frameRate: 1,
+        repeat: 0,
+      });
+    }
+
+    // Hurt: frame 13 (recuando)
     if (!this.scene.anims.exists('player_hurt')) {
       this.scene.anims.create({
         key: 'player_hurt',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
-          frames: [5], // Usa frame de fall como "hit"
+          frames: [13],
         }),
         frameRate: 1,
         repeat: 0,

@@ -65,23 +65,23 @@ export const PlayerConfigSchema = z.object({
   pitDamage: z.number().positive().default(16),
 
   // ─── Sprite ─────────────────────────────────────────────────
-  /** Largura do sprite em pixels */
-  spriteWidth: z.number().int().positive().default(32 * S),
+  /** Largura do display em pixels (64 = tamanho nativo do frame) */
+  spriteWidth: z.number().int().positive().default(64),
 
-  /** Altura do sprite em pixels */
-  spriteHeight: z.number().int().positive().default(32 * S),
+  /** Altura do display em pixels */
+  spriteHeight: z.number().int().positive().default(64),
 
-  /** Largura do hitbox (menor que o sprite para ser justo) — NÃO escalar, Phaser aplica o scale do sprite */
-  hitboxWidth: z.number().int().positive().default(16),
+  /** Largura do hitbox — com frame 64×64 e displaySize 64, scale=1, valores usados diretamente */
+  hitboxWidth: z.number().int().positive().default(20),
 
   /** Altura do hitbox */
-  hitboxHeight: z.number().int().positive().default(24),
+  hitboxHeight: z.number().int().positive().default(32),
 
   /** Offset X do hitbox em relação ao sprite */
-  hitboxOffsetX: z.number().default(8),
+  hitboxOffsetX: z.number().default(22),
 
   /** Offset Y do hitbox em relação ao sprite */
-  hitboxOffsetY: z.number().default(8),
+  hitboxOffsetY: z.number().default(30),
 });
 
 /** Tipo derivado do schema */

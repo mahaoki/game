@@ -84,11 +84,12 @@ export class BootScene extends Phaser.Scene {
     this.load.image('title_bg', 'assets/title_bg.png');
     this.load.image('logo', 'assets/logo.png');
 
-    // Carrega o spritesheet do player (8 frames de 32×32)
-    // Ordem: idle1, idle2, run1, run2, jump, fall, shoot, dash
+    // Carrega o spritesheet do player (16 frames de 64×64)
+    // Frames 0-1: Idle | 2-5: Run | 6: Jump | 7: Fall
+    // 8-9: Shoot | 10-11: Dash | 12: Crouch | 13: Hurt | 14: Wall | 15: Victory
     this.load.spritesheet('player_sheet', 'assets/player_sheet.png', {
-      frameWidth: 32,
-      frameHeight: 32,
+      frameWidth: 64,
+      frameHeight: 64,
     });
 
     // Carrega o sprite do projétil (16×16 com transparência)
