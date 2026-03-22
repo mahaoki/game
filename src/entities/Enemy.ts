@@ -9,7 +9,7 @@
  */
 import Phaser from 'phaser';
 import { createActor } from 'xstate';
-import { patrolMachine, turretMachine, flamerMachine, dropperMachine, type EnemyType } from '../core/machines/enemyMachine';
+import { patrolMachine, turretMachine, flamerMachine, dropperMachine, jellyfishMachine, torpedoerMachine, type EnemyType } from '../core/machines/enemyMachine';
 import { getEnemyConfig, type EnemyConfig } from '../specs/enemyConfig';
 import { S } from '../config/scaleConstants';
 
@@ -44,6 +44,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       turret: 'enemy_turret_sheet',
       flamer: 'enemy_flamer_sheet',
       dropper: 'enemy_dropper_sheet',
+      jellyfish: 'enemy_jellyfish_sheet',
+      torpedoer: 'enemy_torpedoer_sheet',
     };
     super(scene, x, y, textureMap[type], 0);
 
@@ -63,7 +65,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     body.setOffset(6, 8);
     this.setDisplaySize(this.config.spriteSize, this.config.spriteSize);
 
-    if (type === 'turret') {
+    if (type === 'turret' || type === 'jellyfish') {
       body.setImmovable(true);
       body.setAllowGravity(false);
     }
@@ -76,31 +78,38 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.createAnimations();
 
     // Iniciar máquina
-    const machineMap = {
+    const machineMap: Record<EnemyType, typeof patrolMachine> = {
       patrol: patrolMachine,
       turret: turretMachine,
       flamer: flamerMachine,
       dropper: dropperMachine,
+      jellyfish: jellyfishMachine as unknown as typeof patrolMachine,
+      torpedoer: torpedoerMachine as unknown as typeof patrolMachine,
     };
-    this.enemyActor = createActor(machineMap[type] as typeof patrolMachine);
+    this.enemyActor = createActor(machineMap[type]);
     this.enemyActor.start();
 
-    // Turret/Flamer: iniciar loops
+    // Turret/Flamer/Torpedoer: iniciar loops
     if (type === 'turret') {
       this.startTurretLoop();
     }
     if (type === 'flamer') {
       this.startFlamerLoop();
     }
+    if (type === 'torpedoer') {
+      this.startTorpedoerLoop();
+    }
   }
 
   private createAnimations(): void {
     const prefixMap: Record<EnemyType, string> = {
       patrol: 'met', turret: 'turret', flamer: 'flamer', dropper: 'dropper',
+      jellyfish: 'jellyfish', torpedoer: 'torpedoer',
     };
     const sheetMap: Record<EnemyType, string> = {
       patrol: 'enemy_met_sheet', turret: 'enemy_turret_sheet',
       flamer: 'enemy_flamer_sheet', dropper: 'enemy_dropper_sheet',
+      jellyfish: 'enemy_jellyfish_sheet', torpedoer: 'enemy_torpedoer_sheet',
     };
     const prefix = prefixMap[this.enemyType];
     const sheetKey = sheetMap[this.enemyType];
@@ -145,6 +154,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       case 'turret': this.updateTurret(); break;
       case 'flamer': this.updateFlamer(); break;
       case 'dropper': this.updateDropper(); break;
+      case 'jellyfish': this.updateJellyfish(); break;
+      case 'torpedoer': this.updateTorpedoer(); break;
     }
   }
 
@@ -497,6 +508,113 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
         });
       }
     }
+  }
+
+  // ─── Jellyfish AI ──────────────────────────────────────────────────
+  private jellyfishBaseY: number = 0;
+  private jellyfishTime: number = 0;
+
+  private updateJellyfish(): void {
+    const state = this.enemyActor.getSnapshot().value;
+    if (state === 'hurt') return;
+
+    if (this.jellyfishBaseY === 0) this.jellyfishBaseY = this.y;
+    this.jellyfishTime += 0.02;
+    this.y = this.jellyfishBaseY + Math.sin(this.jellyfishTime) * 8 * S;
+
+    if (!this.playerRef) return;
+    const dist = Phaser.Math.Distance.Between(this.x, this.y, this.playerRef.x, this.playerRef.y);
+    const range = 80 * S;
+
+    if (dist < range && state === 'floating') {
+      this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
+      this.setTint(0x00ffff);
+      this.play('jellyfish_shoot', true);
+      this.scene.time.delayedCall(800, () => {
+        if (this.active) {
+          this.clearTint();
+          this.play('jellyfish_idle', true);
+          this.enemyActor.send({ type: 'SHOOT_COOLDOWN_DONE' });
+        }
+      });
+    } else if (state === 'floating') {
+      this.play('jellyfish_walk', true);
+    }
+  }
+
+  // ─── Torpedoer AI ─────────────────────────────────────────────────
+  private updateTorpedoer(): void {
+    const state = this.enemyActor.getSnapshot().value;
+    const context = this.enemyActor.getSnapshot().context;
+    const body = this.body as Phaser.Physics.Arcade.Body;
+
+    if (state === 'hurt') {
+      body.setVelocityX(0);
+      return;
+    }
+
+    if (state === 'patrolling') {
+      const speed = 25 * S;
+      body.setVelocityX(context.facing === 'left' ? -speed : speed);
+      this.setFlipX(context.facing === 'right');
+      this.play('torpedoer_walk', true);
+    } else if (state === 'aiming' || state === 'shooting') {
+      body.setVelocityX(0);
+      this.play('torpedoer_shoot', true);
+    }
+  }
+
+  private startTorpedoerLoop(): void {
+    this.shootTimer = this.scene.time.addEvent({
+      delay: 2500,
+      callback: () => {
+        const state = this.enemyActor.getSnapshot().value;
+        if (state !== 'patrolling' && state !== 'aiming') return;
+        if (!this.active) return;
+
+        if (!this.playerRef) return;
+        const dist = Phaser.Math.Distance.Between(
+          this.x, this.y, this.playerRef.x, this.playerRef.y
+        );
+        if (dist < 180 * S) {
+          this.enemyActor.send({ type: 'PLAYER_IN_RANGE' });
+          this.enemyActor.send({ type: 'SHOOT' });
+
+          if (this.enemyBulletGroup) {
+            const dir = this.playerRef!.x > this.x ? 1 : -1;
+            const bulletX = this.x + dir * 12 * S;
+            const bulletY = this.y;
+            const torpedo = this.enemyBulletGroup.get(
+              bulletX, bulletY, 'water_projectile'
+            ) as Phaser.Physics.Arcade.Sprite;
+            if (torpedo) {
+              torpedo.setActive(true);
+              torpedo.setVisible(true);
+              torpedo.setDisplaySize(10 * S, 8 * S);
+              torpedo.setTint(0x00aaff);
+              const torpBody = torpedo.body as Phaser.Physics.Arcade.Body;
+              torpBody.setAllowGravity(false);
+              torpBody.setVelocityX(dir * 100 * S);
+
+              this.scene.time.delayedCall(3000, () => {
+                if (torpedo.active) {
+                  torpedo.setActive(false);
+                  torpedo.setVisible(false);
+                  torpBody.setVelocity(0);
+                }
+              });
+            }
+          }
+
+          this.scene.time.delayedCall(600, () => {
+            if (this.active) {
+              this.enemyActor.send({ type: 'SHOOT_COOLDOWN_DONE' });
+            }
+          });
+        }
+      },
+      loop: true,
+    });
   }
 
   destroy(fromScene?: boolean): void {

@@ -51,7 +51,7 @@ export type LevelConfig = z.infer<typeof LevelConfigSchema>;
 
 /** Schema de spawn de inimigo */
 const EnemySpawnSchema = z.object({
-  type: z.enum(['patrol', 'turret', 'flamer', 'dropper']),
+  type: z.enum(['patrol', 'turret', 'flamer', 'dropper', 'jellyfish', 'torpedoer']),
   x: z.number(),
   y: z.number(),
 });
@@ -79,7 +79,7 @@ function p(x: number, y: number, width: number, height: number = 16) {
 }
 
 /** Helper: multiplica coordenadas de enemy spawn */
-function e(type: 'patrol' | 'turret' | 'flamer' | 'dropper', x: number, y: number) {
+function e(type: 'patrol' | 'turret' | 'flamer' | 'dropper' | 'jellyfish' | 'torpedoer', x: number, y: number) {
   return { type, x: x * S, y: y * S };
 }
 
@@ -286,6 +286,86 @@ export function getVulcanFactoryConfig(): LevelConfigWithEnemies {
       e('dropper', 1620, 30),
       e('turret', 1820, 78),
       e('patrol', 1860, 155),
+    ],
+  });
+}
+
+/**
+ * Retorna a configuração da Aqua Depths — Fase subaquática.
+ *
+ * 2400px de largura, 5 seções temáticas, boss Aqua Serpent.
+ */
+export function getAquaDepthsConfig(): LevelConfigWithEnemies {
+  return LevelConfigWithEnemiesSchema.parse({
+    name: 'Aqua Depths',
+    worldWidth: 2400 * S,
+    worldHeight: 180 * S,
+    spawnPoint: { x: 40 * S, y: 140 * S },
+    goalX: 2350 * S,
+    bossZoneX: 1950 * S,
+
+    platforms: [
+      // ═══ SEÇÃO 1: Recifes de Coral (0–500) ═══
+      p(0, 172, 200),
+      p(250, 172, 120),
+      p(400, 172, 100),
+      p(100, 140, 48, 10),
+      p(200, 120, 56, 10),
+      p(350, 105, 48, 10),
+
+      // ═══ SEÇÃO 2: Caverna Submersa (500–1000) ═══
+      p(520, 172, 100),
+      p(680, 172, 120),
+      p(850, 172, 100),
+      p(580, 135, 48, 10),
+      p(720, 110, 56, 10),
+      p(830, 90, 48, 10),
+
+      // ═══ SEÇÃO 3: Ruínas Submersas (1000–1450) ═══
+      p(1020, 172, 100),
+      p(1160, 172, 80),
+      p(1300, 172, 100),
+      p(1420, 172, 80),
+      p(1080, 138, 48, 10),
+      p(1220, 115, 56, 10),
+      p(1360, 95, 48, 10),
+
+      // ═══ SEÇÃO 4: Abismo (1450–1900) ═══
+      p(1500, 172, 100),
+      p(1650, 172, 120),
+      p(1820, 172, 80),
+      p(1560, 140, 48, 10),
+      p(1700, 115, 56, 10),
+      p(1800, 90, 48, 10),
+
+      // ═══ SEÇÃO 5: Arena do Boss (1900–2400) ═══
+      p(1980, 172, 200),
+      p(2220, 172, 300),
+      p(2100, 130, 56, 10),
+      p(2280, 100, 64, 10),
+    ],
+
+    enemies: [
+      // SEÇÃO 1: corais
+      e('jellyfish', 200, 100),
+      e('torpedoer', 350, 155),
+
+      // SEÇÃO 2: caverna
+      e('jellyfish', 600, 90),
+      e('torpedoer', 700, 155),
+      e('jellyfish', 830, 70),
+
+      // SEÇÃO 3: ruínas
+      e('torpedoer', 1100, 155),
+      e('jellyfish', 1220, 80),
+      e('torpedoer', 1360, 155),
+      e('jellyfish', 1420, 90),
+
+      // SEÇÃO 4: abismo
+      e('jellyfish', 1550, 100),
+      e('torpedoer', 1650, 155),
+      e('jellyfish', 1780, 70),
+      e('torpedoer', 1820, 155),
     ],
   });
 }

@@ -180,46 +180,105 @@ export class TitleScene extends Phaser.Scene {
     });
   }
 
-  /** Mostra "PRESS START" piscando e habilita input */
+  /** Mostra menu com opções e habilita input */
   private enableStartInput(config: ReturnType<typeof getTitleScreenConfig>): void {
     const { width, height } = this.scale;
 
-    // Texto piscante "PRESS START"
+    const menuY = height - 50 * S;
+    const menuItems = [
+      { label: '▶  INICIAR JOGO', target: 'GameScene' },
+      { label: '⚡  SELECIONAR FASE', target: 'MissionSelectScene' },
+    ];
+
+    const texts: Phaser.GameObjects.Text[] = [];
+    let selectedIndex = 0;
+
+    // Cria textos do menu
+    menuItems.forEach((item, i) => {
+      const txt = this.add.text(
+        width / 2, menuY + i * 14 * S,
+        item.label,
+        {
+          fontFamily: '"Press Start 2P", monospace',
+          fontSize: fontSize(5),
+          color: i === 0 ? '#00ccff' : '#556677',
+          stroke: '#000000',
+          strokeThickness: 1 * S,
+        }
+      ).setOrigin(0.5);
+
+      // Clique/touch direto no item
+      txt.setInteractive({ useHandCursor: true });
+      txt.on('pointerdown', () => {
+        selectedIndex = i;
+        updateHighlight();
+        this.handleMenuSelect(config, item.target);
+      });
+      txt.on('pointerover', () => {
+        selectedIndex = i;
+        updateHighlight();
+      });
+
+      texts.push(txt);
+    });
+
+    // Atualiza destaque visual
+    const updateHighlight = () => {
+      texts.forEach((txt, i) => {
+        if (i === selectedIndex) {
+          txt.setColor('#00ccff');
+          txt.setScale(1.05);
+        } else {
+          txt.setColor('#556677');
+          txt.setScale(1);
+        }
+      });
+    };
+
+    // Texto "PRESS START" piscante (acima do menu)
     this.blinkTextRef = createBlinkText({
       scene: this,
       x: width / 2,
-      y: height - 30 * S,
+      y: menuY - 16 * S,
       text: config.startText,
       style: {
         color: config.textColor,
-        fontSize: fontSize(6),
+        fontSize: fontSize(4),
       },
       blinkInterval: config.animation.blinkIntervalMs,
     });
 
     // ─── Input: Teclado ──────────────────────────────────────
     if (this.input.keyboard) {
-      this.input.keyboard.on('keydown-ENTER', () => this.handleStart(config));
-      this.input.keyboard.on('keydown-SPACE', () => this.handleStart(config));
+      this.input.keyboard.on('keydown-UP', () => {
+        selectedIndex = (selectedIndex - 1 + menuItems.length) % menuItems.length;
+        updateHighlight();
+      });
+      this.input.keyboard.on('keydown-DOWN', () => {
+        selectedIndex = (selectedIndex + 1) % menuItems.length;
+        updateHighlight();
+      });
+      this.input.keyboard.on('keydown-ENTER', () => {
+        this.handleMenuSelect(config, menuItems[selectedIndex].target);
+      });
+      this.input.keyboard.on('keydown-SPACE', () => {
+        this.handleMenuSelect(config, menuItems[selectedIndex].target);
+      });
     }
-
-    // ─── Input: Touch / Click ────────────────────────────────
-    this.input.on('pointerdown', () => this.handleStart(config));
   }
 
-  /** Processa o "Start" — fade-out e transição */
-  private handleStart(config: ReturnType<typeof getTitleScreenConfig>): void {
-    // Evita disparos duplos
+  /** Processa a seleção do menu — fade-out e transição */
+  private handleMenuSelect(
+    config: ReturnType<typeof getTitleScreenConfig>,
+    targetScene: string
+  ): void {
     if (this.isTransitioning) return;
     this.isTransitioning = true;
 
-    // Atualiza a máquina de estado
     this.menuActor.send({ type: 'START_PRESSED' });
-
-    // Para o texto piscante
     this.blinkTextRef?.stopBlinking();
 
-    // Flash branco rápido (efeito de confirmação)
+    // Flash branco rápido
     this.cameras.main.flash(150, 255, 255, 255);
 
     // Fade-out
@@ -230,9 +289,7 @@ export class TitleScene extends Phaser.Scene {
       () => {
         this.menuActor.send({ type: 'TRANSITION_DONE' });
         this.menuActor.stop();
-
-        // Transiciona para o jogo (placeholder por agora)
-        this.scene.start('GameScene');
+        this.scene.start(targetScene);
       }
     );
   }

@@ -23,8 +23,8 @@ describe('PlayerConfigSchema', () => {
     expect(config.bulletSpeed).toBe(300 * S);
     expect(config.bulletCooldownMs).toBe(200);
     expect(config.maxBullets).toBe(3);
-    expect(config.spriteWidth).toBe(64);
-    expect(config.spriteHeight).toBe(64);
+    expect(config.spriteWidth).toBe(32 * S);
+    expect(config.spriteHeight).toBe(32 * S);
     expect(config.hitboxWidth).toBe(20);
     expect(config.hitboxHeight).toBe(32);
   });

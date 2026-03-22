@@ -54,9 +54,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   /** Power-ups ativos */
   private hasFirePower: boolean = false;
+  private hasWaterPower: boolean = false;
 
   /** Arma atual */
-  private currentWeapon: 'normal' | 'fire' = 'normal';
+  private currentWeapon: 'normal' | 'fire' | 'water' = 'normal';
 
   /** HUD indicador de arma */
   private weaponIndicator: Phaser.GameObjects.Text | null = null;
@@ -196,12 +197,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       });
     }
 
-    // Hurt: frame 13 (recuando)
+    // Hurt: frame 7 (pose de impacto/recuo)
     if (!this.scene.anims.exists('player_hurt')) {
       this.scene.anims.create({
         key: 'player_hurt',
         frames: this.scene.anims.generateFrameNumbers('player_sheet', {
-          frames: [13],
+          frames: [7],
         }),
         frameRate: 1,
         repeat: 0,
@@ -321,8 +322,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     const bulletY = this.y - 2 * S;
 
     const useFire = this.currentWeapon === 'fire';
+    const useWater = this.currentWeapon === 'water';
+    const textureKey = useFire ? 'fire_projectile' : useWater ? 'water_projectile' : 'bullet_sprite';
     const bullet = this.bulletGroup.get(bulletX, bulletY,
-      useFire ? 'fire_projectile' : 'bullet_sprite'
+      textureKey
     ) as Phaser.Physics.Arcade.Sprite;
     if (bullet) {
       bullet.setActive(true);
@@ -400,7 +403,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Timer do estado hurt → volta ao idle
     this.hurtTimer?.destroy();
     this.hurtTimer = this.scene.time.delayedCall(this.config.hurtDurationMs, () => {
-      this.clearTint();
+      // Restaurar tint de arma se fire ativo, senão limpar
+      if (this.currentWeapon === 'fire') {
+        this.setTint(0xff3333);
+      } else if (this.currentWeapon === 'water') {
+        this.setTint(0x3399ff);
+      } else {
+        this.clearTint();
+      }
       this.playerActor.send({ type: 'HURT_END' });
     });
 
@@ -434,15 +444,33 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.updateWeaponIndicator();
   }
 
-  /** Troca a arma ativa (normal ↔ fire) */
-  private switchWeapon(): void {
-    if (!this.hasFirePower) return; // Só troca se tem fire desbloqueado
+  /** Ativa power-up de água — desbloqueia arma water */
+  activateWaterPower(): void {
+    this.hasWaterPower = true;
+    this.currentWeapon = 'water';
 
-    if (this.currentWeapon === 'normal') {
-      this.currentWeapon = 'fire';
-      this.setTint(0xff3333); // Vermelho
+    // Flash visual azul
+    this.setTint(0x3399ff);
+    this.scene.cameras.main.flash(300, 0, 100, 255);
+    this.updateWeaponIndicator();
+  }
+
+  /** Troca a arma ativa (normal ↔ fire ↔ water) */
+  private switchWeapon(): void {
+    if (!this.hasFirePower && !this.hasWaterPower) return;
+
+    const weapons: ('normal' | 'fire' | 'water')[] = ['normal'];
+    if (this.hasFirePower) weapons.push('fire');
+    if (this.hasWaterPower) weapons.push('water');
+
+    const idx = weapons.indexOf(this.currentWeapon);
+    this.currentWeapon = weapons[(idx + 1) % weapons.length];
+
+    if (this.currentWeapon === 'fire') {
+      this.setTint(0xff3333);
+    } else if (this.currentWeapon === 'water') {
+      this.setTint(0x3399ff);
     } else {
-      this.currentWeapon = 'normal';
       this.clearTint();
     }
 
@@ -458,8 +486,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.weaponIndicator.destroy();
     }
 
-    const label = this.currentWeapon === 'fire' ? '🔥 FIRE' : '● NORMAL';
-    const color = this.currentWeapon === 'fire' ? '#ff4400' : '#00ccff';
+    let label: string, color: string;
+    if (this.currentWeapon === 'fire') {
+      label = '🔥 FIRE'; color = '#ff4400';
+    } else if (this.currentWeapon === 'water') {
+      label = '🌊 WATER'; color = '#00aaff';
+    } else {
+      label = '● NORMAL'; color = '#00ccff';
+    }
 
     this.weaponIndicator = this.scene.add.text(
       this.scene.scale.width - 4 * S, 4 * S,
@@ -475,7 +509,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   /** Retorna a arma atual */
-  getCurrentWeapon(): 'normal' | 'fire' {
+  getCurrentWeapon(): 'normal' | 'fire' | 'water' {
     return this.currentWeapon;
   }
 

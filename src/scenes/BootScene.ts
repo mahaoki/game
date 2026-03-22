@@ -128,5 +128,21 @@ export class BootScene extends Phaser.Scene {
     });
     this.load.image('fire_projectile', 'assets/fire_projectile.png');
     this.load.image('powerup_fire', 'assets/powerup_fire.png');
+
+    // ─── Aqua Depths assets ──────────────────────────────────
+    this.load.spritesheet('enemy_jellyfish_sheet', 'assets/enemy_jellyfish_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.spritesheet('enemy_torpedoer_sheet', 'assets/enemy_torpedoer_sheet.png', {
+      frameWidth: 32,
+      frameHeight: 32,
+    });
+    this.load.spritesheet('boss_aqua_sheet', 'assets/boss_aqua_sheet.png', {
+      frameWidth: 64,
+      frameHeight: 64,
+    });
+    this.load.image('water_projectile', 'assets/water_projectile.png');
+    this.load.image('powerup_water', 'assets/powerup_water.png');
   }
 }

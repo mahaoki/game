@@ -19,7 +19,7 @@ interface MissionData {
 
 const MISSIONS: MissionData[] = [
   { name: 'Vulcan Factory', subtitle: 'Fire Zone', color: 0xcc3333, icon: '🔥', levelId: 'vulcan' },
-  { name: 'Frost Cavern', subtitle: 'Ice Zone', color: 0x3366cc, icon: '❄️', levelId: 'frost' },
+  { name: 'Aqua Depths', subtitle: 'Water Zone', color: 0x0088cc, icon: '🌊', levelId: 'aqua' },
   { name: 'Storm Tower', subtitle: 'Electric Zone', color: 0xccaa33, icon: '⚡', levelId: 'storm' },
   { name: 'Shadow Base', subtitle: 'Dark Zone', color: 0x8833aa, icon: '🌑', levelId: 'shadow' },
 ];
@@ -38,6 +38,9 @@ export class MissionSelectScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.selectedIndex = 0;
     this.missionCards = [];
+
+    // Fade-in ao entrar (corrige tela preta vinda de outra cena com fadeOut)
+    this.cameras.main.fadeIn(500, 0, 0, 0);
 
     // ─── Background ───────────────────────────────────────────
     const bg = this.add.graphics();
@@ -77,7 +80,7 @@ export class MissionSelectScene extends Phaser.Scene {
       const row = Math.floor(i / 2);
       const cx = gridX + col * (cardW + gapX) + cardW / 2;
       const cy = gridY + row * (cardH + gapY) + cardH / 2;
-      const card = this.createMissionCard(cx, cy, cardW, cardH, MISSIONS[i]);
+      const card = this.createMissionCard(cx, cy, cardW, cardH, MISSIONS[i], i);
       this.missionCards.push(card);
     }
 
@@ -113,6 +116,7 @@ export class MissionSelectScene extends Phaser.Scene {
       this.input.keyboard!.on('keydown-UP', this.moveUp, this);
       this.input.keyboard!.on('keydown-DOWN', this.moveDown, this);
       this.input.keyboard!.on('keydown-ENTER', this.selectMission, this);
+      this.input.keyboard!.on('keydown-SPACE', this.selectMission, this);
     });
   }
 
@@ -122,9 +126,26 @@ export class MissionSelectScene extends Phaser.Scene {
     cy: number,
     w: number,
     h: number,
-    mission: MissionData
+    mission: MissionData,
+    index: number
   ): Phaser.GameObjects.Container {
     const container = this.add.container(cx, cy).setDepth(400);
+
+    // Hitzone interativa (invisível, cobre o card inteiro)
+    const hitZone = this.add.rectangle(0, 0, w, h, 0x000000, 0);
+    hitZone.setInteractive({ useHandCursor: true });
+    hitZone.on('pointerdown', () => {
+      if (!this.inputEnabled) return;
+      this.selectedIndex = index;
+      this.updateSelector();
+      this.selectMission();
+    });
+    hitZone.on('pointerover', () => {
+      if (!this.inputEnabled) return;
+      this.selectedIndex = index;
+      this.updateSelector();
+    });
+    container.add(hitZone);
 
     // Background do card
     const cardBg = this.add.graphics();
@@ -260,5 +281,6 @@ export class MissionSelectScene extends Phaser.Scene {
     this.input.keyboard!.off('keydown-UP', this.moveUp, this);
     this.input.keyboard!.off('keydown-DOWN', this.moveDown, this);
     this.input.keyboard!.off('keydown-ENTER', this.selectMission, this);
+    this.input.keyboard!.off('keydown-SPACE', this.selectMission, this);
   }
 }

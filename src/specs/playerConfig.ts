@@ -65,11 +65,11 @@ export const PlayerConfigSchema = z.object({
   pitDamage: z.number().positive().default(16),
 
   // ─── Sprite ─────────────────────────────────────────────────
-  /** Largura do display em pixels (64 = tamanho nativo do frame) */
-  spriteWidth: z.number().int().positive().default(64),
+  /** Largura do display em pixels (32 * S = proporcional ao mundo) */
+  spriteWidth: z.number().int().positive().default(32 * S),
 
   /** Altura do display em pixels */
-  spriteHeight: z.number().int().positive().default(64),
+  spriteHeight: z.number().int().positive().default(32 * S),
 
   /** Largura do hitbox — com frame 64×64 e displaySize 64, scale=1, valores usados diretamente */
   hitboxWidth: z.number().int().positive().default(20),

@@ -17,8 +17,9 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { InputManager } from '../core/InputManager';
 import { HealthBar } from '../ui/components/HealthBar';
-import { getLevel1Config, getVulcanFactoryConfig, type LevelConfigWithEnemies } from '../specs/levelConfig';
+import { getLevel1Config, getVulcanFactoryConfig, getAquaDepthsConfig, type LevelConfigWithEnemies } from '../specs/levelConfig';
 import { Boss } from '../entities/Boss';
+import { WaterBoss } from '../entities/WaterBoss';
 import { S, fontSize } from '../config/scaleConstants';
 
 export class GameScene extends Phaser.Scene {
@@ -30,12 +31,13 @@ export class GameScene extends Phaser.Scene {
   private enemyGroup!: Phaser.Physics.Arcade.Group;
   private enemyBulletGroup!: Phaser.Physics.Arcade.Group;
   private enemies: Enemy[] = [];
-  private boss: Boss | null = null;
+  private boss: Boss | WaterBoss | null = null;
   private levelConfig!: LevelConfigWithEnemies;
   private livesText!: Phaser.GameObjects.Text;
   private isRespawning: boolean = false;
   private bossTriggered: boolean = false;
   private isStageClearTriggered: boolean = false;
+  private levelId: string = 'intro';
 
   constructor() {
     super({ key: 'GameScene' });
@@ -45,6 +47,7 @@ export class GameScene extends Phaser.Scene {
     // Carrega config do nível baseado em levelId
     const data = this.scene.settings.data as { levelId?: string } | undefined;
     const levelId = data?.levelId ?? 'intro';
+    this.levelId = levelId;
     this.levelConfig = this.getLevelConfig(levelId);
     this.enemies = [];
     this.boss = null;
@@ -169,6 +172,7 @@ export class GameScene extends Phaser.Scene {
   private getLevelConfig(levelId: string): LevelConfigWithEnemies {
     switch (levelId) {
       case 'vulcan': return getVulcanFactoryConfig();
+      case 'aqua': return getAquaDepthsConfig();
       default: return getLevel1Config();
     }
   }
@@ -185,15 +189,27 @@ export class GameScene extends Phaser.Scene {
 
     // Spawn do boss
     this.time.delayedCall(800, () => {
-      this.boss = new Boss(
-        this,
-        bossX + 60 * S,
-        130 * S,
-        this.player,
-        this.enemyBulletGroup,
-        bossX - 80 * S,
-        bossX + 120 * S
-      );
+      if (this.levelId === 'aqua') {
+        this.boss = new WaterBoss(
+          this,
+          bossX + 60 * S,
+          130 * S,
+          this.player,
+          this.enemyBulletGroup,
+          bossX - 80 * S,
+          bossX + 120 * S
+        );
+      } else {
+        this.boss = new Boss(
+          this,
+          bossX + 60 * S,
+          130 * S,
+          this.player,
+          this.enemyBulletGroup,
+          bossX - 80 * S,
+          bossX + 120 * S
+        );
+      }
 
       // Colisão boss vs plataformas
       this.physics.add.collider(this.boss, this.platforms);
@@ -218,8 +234,10 @@ export class GameScene extends Phaser.Scene {
       // Quando boss morre → spawna power-up → stage clear
       this.events.once('boss-defeated', (dropX: number, dropY: number) => {
         this.boss = null; // Limpar referência ao boss destruído
-        // Spawna orbe de fire power-up
-        const powerup = this.physics.add.sprite(dropX, dropY - 20 * S, 'powerup_fire');
+        // Spawna power-up baseado no nível
+        const isAqua = this.levelId === 'aqua';
+        const powerupKey = isAqua ? 'powerup_water' : 'powerup_fire';
+        const powerup = this.physics.add.sprite(dropX, dropY - 20 * S, powerupKey);
         powerup.setDisplaySize(16 * S, 16 * S);
         powerup.setBounce(0.4);
         (powerup.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
@@ -245,17 +263,23 @@ export class GameScene extends Phaser.Scene {
           powerup.setVisible(false);
           powerup.destroy();
 
-          // Ativa fire power no player
-          this.player.activateFirePower();
+          // Ativa power no player
+          if (isAqua) {
+            this.player.activateWaterPower();
+          } else {
+            this.player.activateFirePower();
+          }
 
           // Texto de obtenção
+          const powerLabel = isAqua ? '🌊 WATER POWER!' : '🔥 FIRE POWER!';
+          const powerColor = isAqua ? '#00aaff' : '#ff6600';
           const text = this.add.text(
             this.player.x, this.player.y - 24 * S,
-            '🔥 FIRE POWER!',
+            powerLabel,
             {
               fontFamily: '"Press Start 2P", monospace',
               fontSize: fontSize(5),
-              color: '#ff6600',
+              color: powerColor,
               stroke: '#000000',
               strokeThickness: 1 * S,
             }
@@ -346,6 +370,19 @@ export class GameScene extends Phaser.Scene {
 
   /** Cria o fundo com parallax */
   private createBackground(): void {
+    if (this.levelId === 'vulcan') {
+      this.createVulcanBackground();
+      return;
+    }
+    if (this.levelId === 'aqua') {
+      this.createAquaBackground();
+      return;
+    }
+    this.createCityBackground();
+  }
+
+  /** Background padrão: cidade noturna */
+  private createCityBackground(): void {
     const { worldWidth, worldHeight } = this.levelConfig;
 
     const bg = this.add.graphics();
@@ -370,7 +407,7 @@ export class GameScene extends Phaser.Scene {
       const brightness = Phaser.Math.Between(100, 255);
       const starColor = (brightness << 16) | (brightness << 8) | brightness;
       stars.fillStyle(starColor, Phaser.Math.FloatBetween(0.2, 0.8));
-    stars.fillRect(sx, sy, S, S);
+      stars.fillRect(sx, sy, S, S);
     }
     stars.setScrollFactor(0.2);
 
@@ -391,19 +428,335 @@ export class GameScene extends Phaser.Scene {
     buildings.setScrollFactor(0.4);
   }
 
+  /** Background vulcânico: céu vermelho, lava, chaminés industriais */
+  private createVulcanBackground(): void {
+    const { worldWidth, worldHeight } = this.levelConfig;
+
+    // ─── Céu vulcânico (gradiente vermelho-escuro → preto) ────
+    const sky = this.add.graphics();
+    const steps = 20;
+    const bandH = Math.ceil(worldHeight / steps);
+    for (let i = 0; i < steps; i++) {
+      const t = i / (steps - 1);
+      const r = Math.floor(30 + t * 15);
+      const g = Math.floor(5 + t * 3);
+      const b = Math.floor(2);
+      sky.fillStyle((r << 16) | (g << 8) | b, 1);
+      sky.fillRect(0, i * bandH, worldWidth, bandH);
+    }
+    sky.setScrollFactor(0.05);
+
+    // ─── Cinzas/partículas flutuando ──────────────────────────
+    const ash = this.add.graphics();
+    for (let i = 0; i < 50; i++) {
+      const ax = Phaser.Math.Between(0, worldWidth);
+      const ay = Phaser.Math.Between(0, worldHeight - 30 * S);
+      const ashColor = Phaser.Math.Between(0, 1) === 0 ? 0xff4400 : 0x663322;
+      ash.fillStyle(ashColor, Phaser.Math.FloatBetween(0.1, 0.4));
+      ash.fillRect(ax, ay, S, S);
+    }
+    ash.setScrollFactor(0.15);
+
+    // ─── Montanhas vulcânicas (silhueta) ──────────────────────
+    const mountains = this.add.graphics();
+    mountains.fillStyle(0x1a0808, 1);
+    for (let mx = 0; mx < worldWidth; mx += Phaser.Math.Between(60 * S, 120 * S)) {
+      const mw = Phaser.Math.Between(80 * S, 160 * S);
+      const mh = Phaser.Math.Between(40 * S, 80 * S);
+      // Triangulo simplificado
+      mountains.fillTriangle(
+        mx, worldHeight,
+        mx + mw / 2, worldHeight - mh,
+        mx + mw, worldHeight
+      );
+    }
+    mountains.setScrollFactor(0.2);
+
+    // ─── Chaminés industriais (background) ────────────────────
+    const factory = this.add.graphics();
+    for (let cx = 40 * S; cx < worldWidth; cx += Phaser.Math.Between(100 * S, 200 * S)) {
+      const cw = Phaser.Math.Between(8 * S, 14 * S);
+      const ch = Phaser.Math.Between(50 * S, 90 * S);
+      // Chaminé
+      factory.fillStyle(0x221111, 1);
+      factory.fillRect(cx, worldHeight - ch, cw, ch);
+      // Anéis metálicos
+      factory.fillStyle(0x443322, 0.6);
+      factory.fillRect(cx - S, worldHeight - ch, cw + 2 * S, 2 * S);
+      factory.fillRect(cx - S, worldHeight - ch + ch * 0.3, cw + 2 * S, 2 * S);
+      factory.fillRect(cx - S, worldHeight - ch + ch * 0.6, cw + 2 * S, 2 * S);
+      // Topo com fogo
+      factory.fillStyle(0xff3300, 0.5);
+      factory.fillRect(cx + S, worldHeight - ch - 3 * S, cw - 2 * S, 3 * S);
+
+      // Fumaça animada (glow subindo)
+      const smoke = this.add.graphics();
+      smoke.fillStyle(0x332211, 0.3);
+      smoke.fillCircle(cx + cw / 2, worldHeight - ch - 6 * S, 5 * S);
+      smoke.fillCircle(cx + cw / 2 - 2 * S, worldHeight - ch - 10 * S, 4 * S);
+      smoke.setScrollFactor(0.3);
+      this.tweens.add({
+        targets: smoke,
+        alpha: { from: 0.3, to: 0.1 },
+        y: '-=' + 8 * S,
+        duration: 3000 + Phaser.Math.Between(0, 2000),
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+    factory.setScrollFactor(0.3);
+
+    // ─── Tubos/canos industriais (mid-ground) ────────────────
+    const pipes = this.add.graphics();
+    for (let px = 0; px < worldWidth; px += Phaser.Math.Between(80 * S, 140 * S)) {
+      const py = Phaser.Math.Between(20 * S, worldHeight - 40 * S);
+      const pw = Phaser.Math.Between(30 * S, 60 * S);
+      // Tubo horizontal
+      pipes.fillStyle(0x332222, 0.7);
+      pipes.fillRect(px, py, pw, 3 * S);
+      // Junções
+      pipes.fillStyle(0x554433, 0.8);
+      pipes.fillRect(px, py - S, 2 * S, 5 * S);
+      pipes.fillRect(px + pw - 2 * S, py - S, 2 * S, 5 * S);
+      // Vapor
+      if (Phaser.Math.Between(0, 2) === 0) {
+        const steam = this.add.graphics();
+        steam.fillStyle(0xffaa44, 0.2);
+        steam.fillCircle(px + pw / 2, py - 2 * S, 3 * S);
+        steam.setScrollFactor(0.4);
+        this.tweens.add({
+          targets: steam,
+          alpha: { from: 0.2, to: 0 },
+          duration: 2000,
+          yoyo: true,
+          repeat: -1,
+        });
+      }
+    }
+    pipes.setScrollFactor(0.4);
+
+    // ─── Rio de lava no fundo ─────────────────────────────────
+    const lava = this.add.graphics();
+    lava.fillStyle(0xff2200, 0.7);
+    lava.fillRect(0, worldHeight - 8 * S, worldWidth, 8 * S);
+    lava.fillStyle(0xff6600, 0.4);
+    lava.fillRect(0, worldHeight - 10 * S, worldWidth, 4 * S);
+    lava.fillStyle(0xffaa00, 0.2);
+    lava.fillRect(0, worldHeight - 12 * S, worldWidth, 3 * S);
+    lava.setScrollFactor(0.5);
+
+    // Glow da lava (pulsante)
+    const lavaGlow = this.add.graphics();
+    lavaGlow.fillStyle(0xff4400, 0.15);
+    lavaGlow.fillRect(0, worldHeight - 20 * S, worldWidth, 20 * S);
+    lavaGlow.setScrollFactor(0.5);
+    this.tweens.add({
+      targets: lavaGlow,
+      alpha: { from: 0.15, to: 0.35 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  /** Cria background para Aqua Depths — gelo em cima, água embaixo */
+  private createAquaBackground(): void {
+    const { worldWidth, worldHeight } = this.levelConfig;
+    const midY = worldHeight * 0.35; // Linha de transição gelo → água
+
+    // ═══ CAMADA SUPERIOR: GELO / NEVE ═══
+
+    // Gradiente gelado (branco → ciano claro)
+    const ice = this.add.graphics();
+    const iceSteps = 6;
+    const iceBandH = midY / iceSteps;
+    for (let i = 0; i < iceSteps; i++) {
+      const t = i / iceSteps;
+      const r = Math.floor(200 - t * 60);
+      const g = Math.floor(220 - t * 40);
+      const b = Math.floor(255 - t * 30);
+      ice.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      ice.fillRect(0, i * iceBandH, worldWidth, iceBandH + 1);
+    }
+    ice.setScrollFactor(0.1);
+
+    // Flocos de neve caindo
+    for (let i = 0; i < 25; i++) {
+      const sx = Phaser.Math.Between(0, worldWidth);
+      const sy = Phaser.Math.Between(0, midY);
+      const size = Phaser.Math.Between(1, 2) * S;
+      const flake = this.add.circle(sx, sy, size, 0xffffff, 0.6);
+      flake.setScrollFactor(0.1 + Math.random() * 0.15);
+      this.tweens.add({
+        targets: flake,
+        y: sy + Phaser.Math.Between(20, 50) * S,
+        x: sx + Phaser.Math.Between(-10, 10) * S,
+        alpha: 0,
+        duration: Phaser.Math.Between(3000, 6000),
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 3000),
+      });
+    }
+
+    // Estalactites de gelo penduradas no teto
+    for (let ix = 20 * S; ix < worldWidth; ix += Phaser.Math.Between(40, 80) * S) {
+      const icicleH = Phaser.Math.Between(8, 24) * S;
+      const icicleW = Phaser.Math.Between(2, 5) * S;
+      const icicle = this.add.graphics();
+      icicle.fillStyle(0xcceeff, 0.7);
+      icicle.beginPath();
+      icicle.moveTo(ix - icicleW / 2, 0);
+      icicle.lineTo(ix + icicleW / 2, 0);
+      icicle.lineTo(ix, icicleH);
+      icicle.closePath();
+      icicle.fillPath();
+      icicle.setScrollFactor(0.15);
+    }
+
+    // Névoa gelada na transição
+    const frostMist = this.add.graphics();
+    frostMist.fillStyle(0xaaddff, 0.15);
+    frostMist.fillRect(0, midY - 10 * S, worldWidth, 20 * S);
+    frostMist.setScrollFactor(0.2);
+    this.tweens.add({
+      targets: frostMist,
+      alpha: { from: 0.1, to: 0.25 },
+      duration: 2000,
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Superfície de gelo (linha brilhante na transição)
+    const iceSurface = this.add.graphics();
+    iceSurface.fillStyle(0xddeeff, 0.6);
+    iceSurface.fillRect(0, midY - 2 * S, worldWidth, 4 * S);
+    iceSurface.setScrollFactor(0.15);
+
+    // ═══ CAMADA INFERIOR: OCEANO PROFUNDO ═══
+
+    // Gradiente oceano (ciano escuro → azul marinho)
+    const ocean = this.add.graphics();
+    const waterSteps = 8;
+    const waterH = worldHeight - midY;
+    const waterBandH = waterH / waterSteps;
+    for (let i = 0; i < waterSteps; i++) {
+      const t = i / waterSteps;
+      const r = Math.floor(10 - t * 8);
+      const g = Math.floor(60 - t * 35);
+      const b = Math.floor(120 - t * 40);
+      ocean.fillStyle(Phaser.Display.Color.GetColor(r, g, b), 1);
+      ocean.fillRect(0, midY + i * waterBandH, worldWidth, waterBandH + 1);
+    }
+    ocean.setScrollFactor(0.1);
+
+    // Bolhas subindo (só na parte de água)
+    for (let i = 0; i < 25; i++) {
+      const bx = Phaser.Math.Between(0, worldWidth);
+      const by = Phaser.Math.Between(midY + 10 * S, worldHeight - 10 * S);
+      const size = Phaser.Math.Between(1, 3) * S;
+      const bubble = this.add.circle(bx, by, size, 0x88ddff, 0.3);
+      bubble.setScrollFactor(0.15 + Math.random() * 0.2);
+      this.tweens.add({
+        targets: bubble,
+        y: midY,
+        alpha: 0,
+        duration: Phaser.Math.Between(3000, 6000),
+        repeat: -1,
+        delay: Phaser.Math.Between(0, 3000),
+      });
+    }
+
+    // Corais no fundo do oceano
+    for (let cx = 0; cx < worldWidth; cx += Phaser.Math.Between(80, 180) * S) {
+      const coralH = Phaser.Math.Between(10, 24) * S;
+      const coralW = Phaser.Math.Between(5, 12) * S;
+      const colors = [0x992255, 0xaa4411, 0x339966, 0x884477];
+      const color = colors[Phaser.Math.Between(0, colors.length - 1)];
+      const coral = this.add.rectangle(
+        cx, worldHeight - coralH / 2 - 4 * S,
+        coralW, coralH, color, 0.4
+      );
+      coral.setScrollFactor(0.3);
+    }
+
+    // Algas balançando
+    for (let kx = 60 * S; kx < worldWidth; kx += Phaser.Math.Between(80, 150) * S) {
+      const kelpH = Phaser.Math.Between(16, 40) * S;
+      const kelp = this.add.rectangle(
+        kx, worldHeight - kelpH / 2, 3 * S, kelpH, 0x226633, 0.5
+      );
+      kelp.setScrollFactor(0.25);
+      this.tweens.add({
+        targets: kelp,
+        x: kx + 4 * S,
+        duration: Phaser.Math.Between(1500, 3000),
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    }
+
+    // Raios de luz filtrando pela camada de gelo
+    for (let r = 0; r < 6; r++) {
+      const rayX = Phaser.Math.Between(0, worldWidth);
+      const ray = this.add.graphics();
+      ray.fillStyle(0xaaddff, 0.04);
+      ray.beginPath();
+      ray.moveTo(rayX, midY);
+      ray.lineTo(rayX + 15 * S, midY);
+      ray.lineTo(rayX - 10 * S, worldHeight);
+      ray.lineTo(rayX - 25 * S, worldHeight);
+      ray.closePath();
+      ray.fillPath();
+      ray.setScrollFactor(0.1);
+      this.tweens.add({
+        targets: ray,
+        alpha: { from: 0.03, to: 0.12 },
+        duration: Phaser.Math.Between(2000, 4000),
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+
+    // Chão arenoso
+    const sand = this.add.graphics();
+    sand.fillStyle(0x443322, 0.4);
+    sand.fillRect(0, worldHeight - 6 * S, worldWidth, 6 * S);
+    sand.setScrollFactor(0.5);
+  }
+
   /** Cria as plataformas do nível */
   private createPlatforms(): void {
     this.platforms = this.physics.add.staticGroup();
 
+    const isVulcan = this.levelId === 'vulcan';
+    const isAqua = this.levelId === 'aqua';
+
     for (const platConfig of this.levelConfig.platforms) {
+      // Cores temáticas por nível
+      let fillColor: number, strokeColor: number, topColor: number;
+      if (isVulcan) {
+        fillColor = platConfig.height > 12 * S ? 0x331111 : 0x442211;
+        strokeColor = 0x663322;
+        topColor = 0xaa4422;
+      } else if (isAqua) {
+        fillColor = platConfig.height > 12 * S ? 0x0a2233 : 0x113344;
+        strokeColor = 0x225566;
+        topColor = 0x22aacc;
+      } else {
+        fillColor = platConfig.height > 12 * S ? 0x334466 : 0x3a5577;
+        strokeColor = 0x556688;
+        topColor = 0x5588aa;
+      }
+
       const plat = this.add.rectangle(
         platConfig.x,
         platConfig.y,
         platConfig.width,
         platConfig.height,
-        platConfig.height > 12 * S ? 0x334466 : 0x3a5577
+        fillColor
       );
-      plat.setStrokeStyle(S, 0x556688);
+      plat.setStrokeStyle(S, strokeColor);
       this.physics.add.existing(plat, true);
       this.platforms.add(plat);
 
@@ -412,7 +765,7 @@ export class GameScene extends Phaser.Scene {
         platConfig.y - platConfig.height / 2,
         platConfig.width,
         S,
-        0x5588aa
+        topColor
       );
       void topLine;
     }
@@ -452,8 +805,8 @@ export class GameScene extends Phaser.Scene {
       );
       this.enemyGroup.add(enemy);
 
-      // Re-aplicar physics de turret (group.add() reseta defaults do body)
-      if (spawn.type === 'turret') {
+      // Re-aplicar physics (group.add() reseta defaults do body)
+      if (spawn.type === 'turret' || spawn.type === 'jellyfish') {
         const body = enemy.body as Phaser.Physics.Arcade.Body;
         body.setImmovable(true);
         body.setAllowGravity(false);

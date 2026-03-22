@@ -11,7 +11,7 @@ import { createMachine, assign } from 'xstate';
 
 // ─── Tipos ────────────────────────────────────────────────────────
 
-export type EnemyType = 'patrol' | 'turret' | 'flamer' | 'dropper';
+export type EnemyType = 'patrol' | 'turret' | 'flamer' | 'dropper' | 'jellyfish' | 'torpedoer';
 export type EnemyFacing = 'left' | 'right';
 
 export interface EnemyContext {
@@ -380,6 +380,162 @@ export const dropperMachine = createMachine({
 
     hurt: {
       on: { HURT_END: { target: 'hanging' } },
+    },
+    dying: {
+      on: { DEATH_ANIM_DONE: { target: 'dead' } },
+    },
+    dead: { type: 'final' },
+  },
+});
+
+// ─── Jellyfish Machine ───────────────────────────────────────────
+
+const jellyfishInitialContext: EnemyContext = {
+  type: 'jellyfish',
+  health: 2,
+  maxHealth: 2,
+  facing: 'left',
+  damage: 2,
+};
+
+export const jellyfishMachine = createMachine({
+  id: 'jellyfish',
+  initial: 'floating',
+  context: jellyfishInitialContext,
+  states: {
+    floating: {
+      on: {
+        PLAYER_IN_RANGE: { target: 'shooting' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+    shooting: {
+      on: {
+        SHOOT_COOLDOWN_DONE: { target: 'floating' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+    hurt: {
+      on: { HURT_END: { target: 'floating' } },
+    },
+    dying: {
+      on: { DEATH_ANIM_DONE: { target: 'dead' } },
+    },
+    dead: { type: 'final' },
+  },
+});
+
+// ─── Torpedoer Machine ──────────────────────────────────────────
+
+const torpedoerInitialContext: EnemyContext = {
+  type: 'torpedoer',
+  health: 3,
+  maxHealth: 3,
+  facing: 'left',
+  damage: 2,
+};
+
+export const torpedoerMachine = createMachine({
+  id: 'torpedoer',
+  initial: 'patrolling',
+  context: torpedoerInitialContext,
+  states: {
+    patrolling: {
+      on: {
+        EDGE_DETECTED: {
+          actions: assign({
+            facing: ({ context }) => (context.facing === 'left' ? 'right' : 'left'),
+          }),
+        },
+        PLAYER_IN_RANGE: { target: 'aiming' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+    aiming: {
+      on: {
+        SHOOT: { target: 'shooting' },
+        PLAYER_OUT_OF_RANGE: { target: 'patrolling' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+    shooting: {
+      on: {
+        SHOOT_COOLDOWN_DONE: { target: 'patrolling' },
+        TAKE_DAMAGE: [
+          {
+            target: 'dying',
+            guard: ({ context, event }) =>
+              context.health - (event as unknown as { damage: number }).damage <= 0,
+            actions: assign({ health: 0 }),
+          },
+          {
+            target: 'hurt',
+            actions: assign({
+              health: ({ context, event }) =>
+                context.health - (event as unknown as { damage: number }).damage,
+            }),
+          },
+        ],
+      },
+    },
+    hurt: {
+      on: { HURT_END: { target: 'patrolling' } },
     },
     dying: {
       on: { DEATH_ANIM_DONE: { target: 'dead' } },
