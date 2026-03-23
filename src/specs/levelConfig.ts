@@ -306,43 +306,44 @@ export function getAquaDepthsConfig(): LevelConfigWithEnemies {
 
     platforms: [
       // ═══ SEÇÃO 1: Recifes de Coral (0–500) ═══
-      p(0, 172, 200),
-      p(250, 172, 120),
-      p(400, 172, 100),
-      p(100, 140, 48, 10),
-      p(200, 120, 56, 10),
-      p(350, 105, 48, 10),
+      // Chão contínuo com pequenas variações de altura
+      p(0, 172, 260),           // chão largo de início
+      p(290, 172, 100),         // gap pequeno (30px), fácil de pular
+      p(420, 172, 100),         // continuação
+      // Plataformas opcionais (ao lado, não bloqueando)
+      p(150, 130, 56, 10),      // plataforma alta opcional
+      p(350, 120, 48, 10),      // plataforma alta opcional
 
       // ═══ SEÇÃO 2: Caverna Submersa (500–1000) ═══
-      p(520, 172, 100),
-      p(680, 172, 120),
-      p(850, 172, 100),
-      p(580, 135, 48, 10),
-      p(720, 110, 56, 10),
-      p(830, 90, 48, 10),
+      p(530, 172, 160),         // chão largo
+      p(720, 172, 140),         // gap pequeno (30px)
+      p(890, 172, 120),         // continuação
+      // Plataformas opcionais acima
+      p(600, 125, 56, 10),
+      p(780, 110, 48, 10),
 
-      // ═══ SEÇÃO 3: Ruínas Submersas (1000–1450) ═══
-      p(1020, 172, 100),
-      p(1160, 172, 80),
-      p(1300, 172, 100),
-      p(1420, 172, 80),
-      p(1080, 138, 48, 10),
-      p(1220, 115, 56, 10),
-      p(1360, 95, 48, 10),
+      // ═══ SEÇÃO 3: Ruínas Submersas (1000–1500) ═══
+      p(1030, 172, 140),
+      p(1200, 172, 120),        // gap pequeno
+      p(1350, 172, 160),
+      // Plataformas escalonadas (ao lado, subida gradual)
+      p(1100, 135, 56, 10),
+      p(1280, 120, 48, 10),
 
-      // ═══ SEÇÃO 4: Abismo (1450–1900) ═══
-      p(1500, 172, 100),
-      p(1650, 172, 120),
-      p(1820, 172, 80),
-      p(1560, 140, 48, 10),
-      p(1700, 115, 56, 10),
-      p(1800, 90, 48, 10),
+      // ═══ SEÇÃO 4: Abismo (1500–1900) ═══
+      p(1530, 172, 140),
+      p(1700, 172, 130),        // gap pequeno
+      p(1860, 172, 100),
+      // Plataformas opcionais
+      p(1600, 130, 56, 10),
+      p(1780, 115, 48, 10),
 
       // ═══ SEÇÃO 5: Arena do Boss (1900–2400) ═══
-      p(1980, 172, 200),
-      p(2220, 172, 300),
-      p(2100, 130, 56, 10),
-      p(2280, 100, 64, 10),
+      // Chão totalmente contínuo para boss fight
+      p(1990, 172, 440),
+      // Plataformas de escape (para pular ataques do boss)
+      p(2100, 125, 64, 10),
+      p(2280, 105, 64, 10),
     ],
 
     enemies: [
@@ -351,21 +352,19 @@ export function getAquaDepthsConfig(): LevelConfigWithEnemies {
       e('torpedoer', 350, 155),
 
       // SEÇÃO 2: caverna
-      e('jellyfish', 600, 90),
-      e('torpedoer', 700, 155),
-      e('jellyfish', 830, 70),
+      e('jellyfish', 620, 90),
+      e('torpedoer', 750, 155),
+      e('jellyfish', 890, 70),
 
       // SEÇÃO 3: ruínas
       e('torpedoer', 1100, 155),
-      e('jellyfish', 1220, 80),
-      e('torpedoer', 1360, 155),
-      e('jellyfish', 1420, 90),
+      e('jellyfish', 1250, 80),
+      e('torpedoer', 1400, 155),
 
       // SEÇÃO 4: abismo
-      e('jellyfish', 1550, 100),
-      e('torpedoer', 1650, 155),
-      e('jellyfish', 1780, 70),
-      e('torpedoer', 1820, 155),
+      e('jellyfish', 1580, 100),
+      e('torpedoer', 1720, 155),
+      e('jellyfish', 1850, 70),
     ],
   });
 }
